@@ -144,6 +144,9 @@ class JsonFormat(str, Enum):
     SEMI_DELIMITED  = "semi-delimited"
     CSV             = "csv"
     TSV             = "tsv"
+    # ICU / Unicode locale + calendar integration
+    LOCALE          = "locale"          # BCP 47 language tag
+    CALENDAR_SYSTEM = "calendar-system" # ICU calendar identifier
 
 
 class HtmlInputType(str, Enum):
@@ -359,6 +362,50 @@ class VCardGender(str, Enum):
     UNKNOWN   = "U"
 
 
+class CalendarSystem(str, Enum):
+    """ICU / CLDR calendar identifiers (RFC 6350 / LDML)."""
+    GREGORIAN            = "gregorian"
+    BUDDHIST             = "buddhist"
+    CHINESE              = "chinese"
+    COPTIC               = "coptic"
+    ETHIOPIC             = "ethiopic"
+    ETHIOPIC_AMETE_ALEM  = "ethiopic-amete-alem"
+    HEBREW               = "hebrew"
+    INDIAN               = "indian"
+    ISLAMIC              = "islamic"
+    ISLAMIC_CIVIL        = "islamic-civil"
+    ISLAMIC_TBLA         = "islamic-tbla"
+    ISLAMIC_UMALQURA     = "islamic-umalqura"
+    ISLAMIC_RGSA         = "islamic-rgsa"
+    ISO8601              = "iso8601"
+    JAPANESE             = "japanese"
+    PERSIAN              = "persian"
+    ROC                  = "roc"
+    DANGI                = "dangi"
+
+
+class IcalWeekDay(str, Enum):
+    """RRULE BYDAY values (RFC 5545 §3.3.10)."""
+    SU = "SU"
+    MO = "MO"
+    TU = "TU"
+    WE = "WE"
+    TH = "TH"
+    FR = "FR"
+    SA = "SA"
+
+
+class IcalFreq(str, Enum):
+    """RRULE FREQ values."""
+    SECONDLY = "SECONDLY"
+    MINUTELY = "MINUTELY"
+    HOURLY   = "HOURLY"
+    DAILY    = "DAILY"
+    WEEKLY   = "WEEKLY"
+    MONTHLY  = "MONTHLY"
+    YEARLY   = "YEARLY"
+
+
 # ---- mapping + enum ----------------------------------------------------
 @dataclass(frozen=True)
 class FormatPattern:
@@ -540,6 +587,9 @@ class FormatType(Enum):
     SEMI_DELIMITED     = FormatMapping(T.STRING, F.SEMI_DELIMITED, S.LONGVARCHAR, "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "a;b;c")
     CSV_ROW            = FormatMapping(T.STRING, F.CSV,            S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, "a,b,c")
     TSV_ROW            = FormatMapping(T.STRING, F.TSV,            S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, "a\\tb\\tc")
+    # ICU / Unicode locale + calendar system integration
+    LOCALE             = FormatMapping(T.STRING, F.LOCALE,         S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "en-US")
+    CALENDAR_SYSTEM    = FormatMapping(T.STRING, F.CALENDAR_SYSTEM,S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "gregorian")
 
 
 # ---- dispatch helpers --------------------------------------------------
@@ -715,19 +765,52 @@ PATTERNS: dict["FormatType", FormatPattern] = {
         parts    = {"item": "TEXT"},
     ),
     FormatType.ICAL_RRULE: FormatPattern(
+        # FREQ is always first; every other field is optional and we
+        # use a single permissive alternation so order-insensitivity
+        # wins over strict spec compliance. Each BY* field maps to
+        # the atomic FormatType representing what its items are.
         regex    = (r"^FREQ=(?P<freq>SECONDLY|MINUTELY|HOURLY|DAILY|WEEKLY|MONTHLY|YEARLY)"
                     r"(?:;INTERVAL=(?P<interval>\d+))?"
                     r"(?:;COUNT=(?P<count>\d+))?"
                     r"(?:;UNTIL=(?P<until>[0-9TZ:+\-]+))?"
+                    r"(?:;BYSECOND=(?P<bysecond>[0-9,]+))?"
+                    r"(?:;BYMINUTE=(?P<byminute>[0-9,]+))?"
+                    r"(?:;BYHOUR=(?P<byhour>[0-9,]+))?"
                     r"(?:;BYDAY=(?P<byday>[A-Z,0-9+\-]+))?"
-                    r"(?:;BYMONTH=(?P<bymonth>[0-9,]+))?"
                     r"(?:;BYMONTHDAY=(?P<bymonthday>[0-9,+\-]+))?"
-                    r"(?:;WKST=(?P<wkst>[A-Z]{2}))?"
+                    r"(?:;BYYEARDAY=(?P<byyearday>[0-9,+\-]+))?"
+                    r"(?:;BYWEEKNO=(?P<byweekno>[0-9,+\-]+))?"
+                    r"(?:;BYMONTH=(?P<bymonth>[0-9,]+))?"
+                    r"(?:;BYSETPOS=(?P<bysetpos>[0-9,+\-]+))?"
+                    r"(?:;WKST=(?P<wkst>SU|MO|TU|WE|TH|FR|SA))?"
                     r"$"),
         template = "FREQ={freq}",
-        parts    = {"freq": "TEXT", "interval": "INT32", "count": "INT32",
-                    "until": "DATETIME", "byday": "TEXT", "bymonth": "TEXT",
-                    "bymonthday": "TEXT", "wkst": "TEXT"},
+        parts    = {"freq":      "TEXT",
+                    "interval":  "INT32",
+                    "count":     "INT32",
+                    "until":     "DATETIME",
+                    "bysecond":  "SECOND",
+                    "byminute":  "MINUTE",
+                    "byhour":    "HOUR",
+                    "byday":     "TEXT",
+                    "bymonthday":"DAY",
+                    "byyearday": "DAY_OF_YEAR",
+                    "byweekno":  "ISO_WEEK_NUM",
+                    "bymonth":   "MONTH_OF_YEAR",
+                    "bysetpos":  "INT32",
+                    "wkst":      "TEXT"},
+    ),
+
+    # BCP 47 locale: lang[-script][-region][-variant]. Script is always
+    # 4 chars, region 2-3 chars, variant 5-8 chars.
+    FormatType.LOCALE: FormatPattern(
+        regex    = (r"^(?P<lang>[a-z]{2,3})"
+                    r"(?:-(?P<script>[A-Z][a-z]{3}))?"
+                    r"(?:-(?P<region>[A-Z]{2}|\d{3}))?"
+                    r"(?:-(?P<variant>[A-Za-z0-9]{5,8}))?$"),
+        template = "{lang}-{script}-{region}-{variant}",
+        parts    = {"lang": "TEXT", "script": "TEXT",
+                    "region": "TEXT", "variant": "TEXT"},
     ),
 }
 

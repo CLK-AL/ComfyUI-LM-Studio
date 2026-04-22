@@ -1180,6 +1180,26 @@
       "html_input": "textarea",
       "comfy": "STRING",
       "sql_type_code": -1
+    },
+    {
+      "name": "LOCALE",
+      "json_type": "string",
+      "json_format": "locale",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "COMBO",
+      "sql_type_code": 12
+    },
+    {
+      "name": "CALENDAR_SYSTEM",
+      "json_type": "string",
+      "json_format": "calendar-system",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "COMBO",
+      "sql_type_code": 12
     }
   ],
   "json_schema_dispatch": [

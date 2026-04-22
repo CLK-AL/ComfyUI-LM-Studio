@@ -83,6 +83,8 @@ enum class JsonFormat(val value: String) {
     SEMI_DELIMITED("semi-delimited"),
     CSV("csv"),
     TSV("tsv"),
+    LOCALE("locale"),
+    CALENDAR_SYSTEM("calendar-system"),
     // Compound-date parts
     MONTH_OF_YEAR("month-of-year"),
     DAY_OF_WEEK("day-of-week"),
@@ -222,6 +224,38 @@ enum class VCardTelType(val value: String) {
 
 enum class VCardGender(val value: String) {
     MALE("M"), FEMALE("F"), OTHER("O"), NONE_("N"), UNKNOWN("U");
+}
+
+enum class CalendarSystem(val value: String) {
+    GREGORIAN("gregorian"),
+    BUDDHIST("buddhist"),
+    CHINESE("chinese"),
+    COPTIC("coptic"),
+    ETHIOPIC("ethiopic"),
+    ETHIOPIC_AMETE_ALEM("ethiopic-amete-alem"),
+    HEBREW("hebrew"),
+    INDIAN("indian"),
+    ISLAMIC("islamic"),
+    ISLAMIC_CIVIL("islamic-civil"),
+    ISLAMIC_TBLA("islamic-tbla"),
+    ISLAMIC_UMALQURA("islamic-umalqura"),
+    ISLAMIC_RGSA("islamic-rgsa"),
+    ISO8601("iso8601"),
+    JAPANESE("japanese"),
+    PERSIAN("persian"),
+    ROC("roc"),
+    DANGI("dangi");
+}
+
+enum class IcalWeekDay(val value: String) {
+    SU("SU"), MO("MO"), TU("TU"), WE("WE"),
+    TH("TH"), FR("FR"), SA("SA");
+}
+
+enum class IcalFreq(val value: String) {
+    SECONDLY("SECONDLY"), MINUTELY("MINUTELY"), HOURLY("HOURLY"),
+    DAILY("DAILY"), WEEKLY("WEEKLY"),
+    MONTHLY("MONTHLY"), YEARLY("YEARLY");
 }
 
 data class FormatMapping(
