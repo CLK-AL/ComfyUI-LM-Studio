@@ -1,7 +1,8 @@
 """WireMock-backed tests for LMStudioNode._get_response_api.
 
 Run:
-    docker run --rm -d -p 8089:8080 --name wiremock wiremock/wiremock:3.9.1
+    sdk env                              # .sdkmanrc pins java/kotlin
+    jbang tests/wiremock-lms.kt start    # embedded WireMock, no Docker
     pytest tests/ -q
 
 These tests force the API path by passing use_sdk=False.

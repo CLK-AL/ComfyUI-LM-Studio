@@ -1,6 +1,12 @@
 """Pytest fixtures for WireMock-backed tests of the LM Studio node.
 
-Assumes a WireMock server is already running (locally or in CI). Set
+Assumes the jbang/Kotlin WireMock facade (tests/wiremock-lms.kt) is
+already running — start it with:
+
+    sdk env                              # .sdkmanrc: java=25-graal, kotlin=2.3.2
+    jbang tests/wiremock-lms.kt start    # listens on 127.0.0.1:8089
+
+or use the native build (jbang --native tests/wiremock-lms.kt). Set
 WIREMOCK_URL to override the default http://127.0.0.1:8089.
 """
 import os

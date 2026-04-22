@@ -8,18 +8,38 @@ cover it separately with `unittest.mock` against the `lmstudio` module.
 
 ## Tooling
 
-- **WireMock**: run as a standalone server (Docker: `wiremock/wiremock:3.9.1`
-  or the jar). Default bound to `http://127.0.0.1:8089`.
-- **Python client**: `wiremock` PyPI package (>=2.6) to program stubs.
-- **Test runner**: `pytest`.
-- **Fixtures**: a session-scoped fixture starts WireMock (or assumes it's
-  already running in CI), resets mappings between tests, and tears it down.
+No Docker. The mock server is a **jbang Kotlin (Clikt) facade** that embeds
+WireMock and seeds stubs from the **LM Studio official OpenAPI** document.
+Runtime is **GraalVM 25 + Kotlin 2.3.2** pinned via `.sdkmanrc`, and the
+script can be AOT-compiled to a native binary.
 
-Install:
+- **Toolchain**: `sdk env` (reads `.sdkmanrc`) → `java=25-graal`,
+  `kotlin=2.3.2`.
+- **Facade**: `tests/wiremock-lms.kt` (jbang header declares deps:
+  `org.wiremock:wiremock:3.9.1`, `com.github.ajalt.clikt:clikt:4.4.0`,
+  `io.swagger.parser.v3:swagger-parser:2.1.22`).
+- **Stub source**: default `https://lmstudio.ai/docs/openapi.yaml`, override
+  with `--spec` (path or URL). Response examples from the spec become stub
+  bodies; paths without examples get a `{"stubbed": true, "path": ...}`
+  placeholder you can override per-test from Python.
+- **Test runner**: `pytest`; bound to whatever URL the facade prints.
+- **Fixtures**: session-scoped skip if WireMock isn't reachable; per-test
+  reset of mappings + request log via the admin API.
+
+Install & run:
 
 ```
+curl -s "https://get.sdkman.io" | bash  # one-time
+sdk env install                         # picks up .sdkmanrc
+curl -Ls https://sh.jbang.dev | bash    # one-time
+jbang tests/wiremock-lms.kt start       # listens on 127.0.0.1:8089
+
+# (optional) AOT native binary:
+jbang --native tests/wiremock-lms.kt
+./wiremock-lms start
+
 pip install pytest wiremock requests
-docker run --rm -d -p 8089:8080 --name wiremock wiremock/wiremock:3.9.1
+pytest tests/ -q
 ```
 
 ## Endpoint under test
@@ -65,15 +85,21 @@ Expected response shape (from the node's parser):
 ## File layout
 
 ```
+.sdkmanrc                # java=25-graal, kotlin=2.3.2
 tests/
   TESTPLAN.md            # this file
-  conftest.py            # wiremock fixtures
+  wiremock-lms.kt        # jbang Kotlin/Clikt facade seeding from LMS OpenAPI
+  conftest.py            # wiremock fixtures (skip if server absent)
   test_api_mode.py       # cases 1–12
-  stubs/                 # reusable stub builders
+  stubs/                 # reusable stub builders (optional)
 ```
 
 ## CI hook
 
-Add a job that boots WireMock in a service container and runs `pytest -q`.
-Keep a `WIREMOCK_URL` env var so the same tests work locally against a
-manually-started server.
+Provision SDKMAN + jbang in the job, `sdk env`, launch the facade in the
+background (`jbang tests/wiremock-lms.kt start &`), wait for
+`127.0.0.1:8089`, then run `pytest -q`. A `WIREMOCK_URL` env var lets the
+same tests target a locally- or CI-started server.
+
+For cold-start speed in CI, prefer the native binary: build once with
+`jbang --native` and cache `./wiremock-lms`.
