@@ -120,6 +120,98 @@ Enable debug mode to see:
 - LM Studio (running locally)
 - See `requirements.txt` for Python packages
 
+## Testing
+
+The node is the unit under test: a ComfyUI node's public surface is just
+`INPUT_TYPES` + `get_response(...)`, so the suite drives that contract
+directly. The tricky part is that neither of the node's external
+dependencies is required at test time:
+
+- **ComfyUI runtime is not needed.** `node.py` is imported as a plain
+  Python module. `pytest.ini` uses `--import-mode=importlib` and
+  `--ignore=__init__.py` so the ComfyUI-discovery `__init__.py` (with
+  its relative import) is skipped.
+- **LM Studio is not needed.** An embedded [WireMock](https://wiremock.org/)
+  server stands in for it. WireMock is launched from a jbang-backed
+  Kotlin script (`tests/lm-studio.wiremock.jbang.kt`) seeded from LM
+  Studio's OpenAPI document (online first, with
+  `tests/lms-openapi.yaml` as offline fallback).
+
+### What we test
+
+`tests/test_comfyui_mock.py` exercises `LMStudioNode.get_response` with
+`use_sdk=False` (API path) against the WireMock facade:
+
+| Case                  | Checks                                                                      |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `happy_path`          | Happy completion: content extracted, stats formatted with tokens/sec + I/O   |
+| `thinking_stripped`   | With `thinking_tokens=False`, `<think>…</think>` is removed from the output  |
+| `http_500`            | Server error → `"Error: …"` string, stats fall back to the node's default    |
+| `request_shape`       | The HTTP request body carries model, temperature, stream=false, messages    |
+| `connection_refused`  | Unreachable server → `"Connection error …"`, stats default                   |
+
+The SDK path (`use_sdk=True`) is covered separately with `unittest.mock`
+against the `lmstudio` package — it doesn't go through HTTP.
+
+### How we test — architecture diagrams
+
+Pre-rendered PNGs are checked into `puml/` alongside the sources.
+Re-render with any of:
+
+- **Browser (no install):** [plantuml-wasm](https://github.com/plantuml/plantuml-wasm)
+  — pure-JS viewer. Paste a `.puml` file.
+- **Server URL:** https://www.plantuml.com/plantuml/uml/
+- **VS Code:** the *PlantUML* extension renders `.puml` inline.
+- **CLI:** `java -jar plantuml.jar -tpng puml/*.puml` (requires `graphviz`
+  for component diagrams).
+
+**Component view** — what's wired to what, and what's explicitly *absent*
+(ComfyUI runtime, LM Studio server):
+
+![Test components](./puml/test-components.png)
+
+**Sequence view** — one cold-start pytest session, end to end:
+
+![Test sequence](./puml/test-sequence.png)
+
+Sources: [`puml/test-components.puml`](./puml/test-components.puml),
+[`puml/test-sequence.puml`](./puml/test-sequence.puml).
+
+### How to run
+
+Both launchers discover the ComfyUI virtualenv in `./venv`, `./.venv`,
+`../venv`, `../.venv`, `../../venv`, or `../../.venv`. Override with
+`COMFYUI_VENV=/path/to/venv`.
+
+```bash
+./run-tests.sh                                   # Linux / macOS
+./run-tests.sh tests/test_comfyui_mock.py -v     # extra pytest args forward
+```
+
+```powershell
+.\run-tests.ps1                                  # Windows
+.\run-tests.ps1 -- -v                            # forward flags
+```
+
+First run bootstraps SDKMAN + jbang (pins in `.sdkmanrc`) and fetches the
+OpenAPI spec. Subsequent runs skip the install. `SKIP_BOOTSTRAP=1`
+requires a pre-running WireMock at `$WIREMOCK_URL` (default
+`http://127.0.0.1:8089`).
+
+### CI
+
+`.github/workflows/tests.yml` runs the same `./run-tests.sh` on every
+push and PR. It caches `~/.sdkman`, `~/.jbang`, and `~/.m2/repository`
+so the first run installs everything (~3 min) and subsequent runs
+reuse the cache (~20 s).
+
+### Manual facade launch
+
+```bash
+source ~/.sdkman/bin/sdkman-init.sh && sdk env
+jbang tests/lm-studio.wiremock.jbang.kt start --spec tests/lms-openapi.yaml
+```
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.

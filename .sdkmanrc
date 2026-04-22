@@ -1,0 +1,6 @@
+# Pin toolchain for the WireMock/jbang facade.
+# Activate with: sdk env   (SDKMAN 5.18+, after `sdk env init` once)
+# Versions verified via SDKMAN API on 2026-04-22 (latest stable).
+java=25.0.2-graal
+kotlin=2.3.20
+jbang=0.138.0

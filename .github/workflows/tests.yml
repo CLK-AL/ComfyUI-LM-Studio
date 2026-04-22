@@ -1,0 +1,56 @@
+name: tests
+
+on:
+  push:
+    branches: [main, master, "claude/**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: unit (pytest + jbang WireMock)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Cache SDKMAN (~/.sdkman), the jbang dep/JDK cache (~/.jbang), and
+      # the Maven repo that jbang resolves into. First cold run installs
+      # everything; subsequent runs reuse the cache and start in ~20s.
+      - name: Cache SDKMAN + jbang + Maven
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sdkman
+            ~/.jbang
+            ~/.m2/repository
+          key: ${{ runner.os }}-toolchain-${{ hashFiles('.sdkmanrc', 'tests/lm-studio.wiremock.jbang.kt') }}
+          restore-keys: |
+            ${{ runner.os }}-toolchain-
+
+      # Create a venv at ./venv so run-tests.sh's discovery picks it up
+      # the same way it would in a local ComfyUI custom-node layout.
+      - name: Create venv and install runtime deps
+        run: |
+          python -m venv venv
+          ./venv/bin/pip install --upgrade pip
+          ./venv/bin/pip install requests numpy Pillow pytest wiremock
+
+      - name: Run unit tests
+        run: ./run-tests.sh -q
+
+      - name: Show WireMock log on failure
+        if: failure()
+        run: |
+          echo "::group::/tmp/wiremock.log"
+          cat /tmp/wiremock.log 2>/dev/null || echo "(no log)"
+          echo "::endgroup::"
