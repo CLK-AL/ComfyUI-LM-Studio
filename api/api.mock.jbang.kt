@@ -22,15 +22,26 @@
 //DEPS io.rsocket.kotlin:rsocket-core-jvm:0.20.0
 //DEPS io.rsocket.kotlin:rsocket-transport-ktor-websocket-server-jvm:0.20.0
 
-// --- JDBC (Spring + Postgres + PostGIS + local SQLite via SQLDelight) ---
+// --- JDBC (JVM path: Spring + Postgres + PostGIS) ---
 //DEPS org.springframework:spring-jdbc:6.1.12
 //DEPS org.springframework:spring-tx:6.1.12
 //DEPS com.zaxxer:HikariCP:5.1.0
 //DEPS org.postgresql:postgresql:42.7.4
 //DEPS net.postgis:postgis-jdbc:2024.1.0
+
+// --- JDBC (KMP-portable path: SQLDelight + Exposed) ---
+// Both libraries have Kotlin Multiplatform publications — the same
+// CRUD code compiled here can move into a Compose Multiplatform
+// module's commonMain without touching Spring. See
+// docs/KMP_MIGRATION.md for the lift.
 //DEPS org.xerial:sqlite-jdbc:3.46.1.0
 //DEPS app.cash.sqldelight:jdbc-driver:2.0.2
 //DEPS app.cash.sqldelight:runtime-jvm:2.0.2
+//DEPS org.jetbrains.exposed:exposed-core:0.54.0
+//DEPS org.jetbrains.exposed:exposed-dao:0.54.0
+//DEPS org.jetbrains.exposed:exposed-jdbc:0.54.0
+//DEPS org.jetbrains.exposed:exposed-json:0.54.0
+//DEPS org.jetbrains.exposed:exposed-kotlin-datetime:0.54.0
 
 // --- CLI + logging ---
 //DEPS com.github.ajalt.clikt:clikt-jvm:5.0.3
@@ -38,6 +49,8 @@
 
 //SOURCES common/Naming.kt
 //SOURCES common/ComponentTables.kt
+//SOURCES common/FormatType.kt
+//SOURCES common/JdbcExposed.kt
 //SOURCES openapi/Wiremock.kt
 //SOURCES asyncapi/AsyncApiServer.kt
 //SOURCES mcp/McpServer.kt
