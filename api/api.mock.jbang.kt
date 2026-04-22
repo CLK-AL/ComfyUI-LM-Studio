@@ -30,6 +30,10 @@
 //DEPS com.squareup.moshi:moshi:1.15.1
 //DEPS com.squareup.moshi:moshi-kotlin:1.15.1
 
+// --- iCalendar + vCard parsing (string/file → jCal/jCard) ---
+//DEPS org.mnode.ical4j:ical4j:4.0.5
+//DEPS com.googlecode.ez-vcard:ez-vcard:0.12.1
+
 // --- RSocket ---
 //DEPS io.rsocket.kotlin:rsocket-core-jvm:0.20.0
 //DEPS io.rsocket.kotlin:rsocket-transport-ktor-websocket-server-jvm:0.20.0
@@ -64,6 +68,7 @@
 //SOURCES common/SqlTypes.kt
 //SOURCES common/FormatType.kt
 //SOURCES common/JdbcExposed.kt
+//SOURCES common/IcsVcfParser.kt
 //SOURCES openapi/Wiremock.kt
 //SOURCES asyncapi/AsyncApiServer.kt
 //SOURCES mcp/McpServer.kt

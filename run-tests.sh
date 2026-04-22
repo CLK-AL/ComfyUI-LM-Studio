@@ -40,7 +40,8 @@ if [[ -f "$HOME/.sdkman/bin/sdkman-init.sh" ]]; then
 fi
 
 # Install test-only deps if missing. Node runtime deps (requests, numpy,
-# Pillow) should already be in the ComfyUI venv.
-"$PY" -m pip install -q pytest wiremock 2>/dev/null || true
+# Pillow) should already be in the ComfyUI venv. `vobject` + `icalendar`
+# give full RFC coverage for the .vcf / .ics → jCard / jCal converter.
+"$PY" -m pip install -q pytest wiremock vobject icalendar 2>/dev/null || true
 
 exec "$PY" -m pytest "$@"
