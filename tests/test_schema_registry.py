@@ -1,5 +1,7 @@
-"""Schema registry — SQLite-backed cache of discovered JDBC schemas,
-keyed by URI template. Holds NO row data, just table/column metadata.
+"""Cross-kind JSON Schema registry.
+
+On-disk .schema.json files are the source of truth. SQLite is a thin
+index (kind / api / category / name → path + sha256 + captured_at).
 """
 from __future__ import annotations
 
@@ -15,103 +17,140 @@ sys.path.insert(0, str(REPO))
 from comfyui_openapi_node.schema_registry import SchemaRegistry
 
 
-_DEMO = {
-    "tables": [
-        {
-            "name": "users",
-            "primary_key": ["id"],
-            "columns": [
-                {"name": "id",    "sql_type": "BIGINT",  "pg_type": "int8",
-                 "nullable": False},
-                {"name": "email", "sql_type": "VARCHAR", "size": 255,
-                 "nullable": False},
-                {"name": "tags",  "sql_type": "ARRAY",   "nullable": True,
-                 "default": None},
-            ],
-        }
-    ]
+_USER = {
+    "type": "object",
+    "required": ["id", "email"],
+    "properties": {
+        "id":    {"type": "integer", "format": "int64"},
+        "email": {"type": "string",  "format": "email"},
+    },
+}
+
+_CHAT_COMPLETIONS = {
+    "operationId": "chatCompletions",
+    "protocol":    "http",
+    "verb":        "POST",
+    "path":        "/api/v0/chat/completions",
+    "input_schema":  {"type": "object", "properties": {"model": {"type": "string"}}},
+    "output_schema": {"type": "object", "properties": {"choices": {"type": "array"}}},
 }
 
 
 @pytest.fixture
 def reg(tmp_path):
-    return SchemaRegistry.open(tmp_path / "reg.db")
+    return SchemaRegistry.open(tmp_path / "registry")
 
 
-# --- put / get roundtrip -------------------------------------------------
-def test_put_then_get_roundtrip(reg):
-    uri = "jdbc:postgresql://db.example.com:5432/app"
-    assert reg.get(uri) is None
-    reg.put(uri, _DEMO, driver="postgresql")
-    got = reg.get(uri)
-    assert got is not None
-    # Table name + PK preserved.
-    assert got["tables"][0]["name"] == "users"
-    assert got["tables"][0]["primary_key"] == ["id"]
-    # Columns preserved in order and with type metadata.
-    cols = got["tables"][0]["columns"]
-    assert [c["name"] for c in cols] == ["id", "email", "tags"]
-    assert cols[0]["sql_type"] == "BIGINT" and cols[0]["pg_type"] == "int8"
-    assert cols[1]["size"] == 255
-    assert cols[2]["nullable"] is True
-
-
-def test_put_is_idempotent_and_replaces(reg):
-    uri = "jdbc:sqlite:/tmp/one.db"
-    reg.put(uri, _DEMO)
-    reg.put(uri, {"tables": [
-        {"name": "users", "primary_key": ["id"],
-         "columns": [{"name": "id", "sql_type": "INTEGER", "nullable": False}]},
-    ]})
-    got = reg.get(uri)
-    assert len(got["tables"][0]["columns"]) == 1
-
-
-# --- URI template matching ----------------------------------------------
-def test_template_collapses_per_host_port_db(reg):
-    reg.register_template("jdbc:postgresql://{host}:{port}/{db}")
-    reg.put("jdbc:postgresql://db1.example.com:5432/app", _DEMO,
-            driver="postgresql")
-    # Different host + port + db — same template, same cached schema.
-    assert reg.get("jdbc:postgresql://db2.example.com:6543/other") is not None
-    # Confirm only ONE template stored.
-    assert reg.templates() == ["jdbc:postgresql://{host}:{port}/{db}"]
-
-
-def test_sqlite_memory_and_file_share_a_template_when_registered(reg):
-    reg.register_template("jdbc:sqlite:{path}")
-    reg.put("jdbc:sqlite::memory:", _DEMO)
-    assert reg.get("jdbc:sqlite:/tmp/x.db") is not None
-
-
-def test_unregistered_uri_uses_literal_as_template(reg):
-    # No register_template() call → URI is its own template.
-    reg.put("jdbc:mariadb://x/y", _DEMO)
-    assert reg.get("jdbc:mariadb://x/y") is not None
-    assert reg.get("jdbc:mariadb://other/z") is None
-
-
-# --- clear ---------------------------------------------------------------
-def test_clear_one_template(reg):
-    reg.put("jdbc:sqlite:/tmp/a.db", _DEMO)
-    reg.put("jdbc:sqlite:/tmp/b.db", _DEMO)
-    reg.clear("jdbc:sqlite:/tmp/a.db")
-    assert reg.get("jdbc:sqlite:/tmp/a.db") is None
-    assert reg.get("jdbc:sqlite:/tmp/b.db") is not None
-
-
-def test_clear_all(reg):
-    reg.put("jdbc:sqlite:/tmp/a.db", _DEMO)
-    reg.put("jdbc:sqlite:/tmp/b.db", _DEMO)
-    reg.clear()
-    assert reg.templates() == []
-
-
-# --- registry holds NO row data -----------------------------------------
-def test_registry_schema_has_no_row_table(reg):
-    # Canary: the DB should only have the four bookkeeping tables.
-    conn = reg._conn
-    names = {r[0] for r in conn.execute(
+# --- sanity: the index has exactly the two bookkeeping tables -----------
+def test_index_only_has_thin_tables(reg):
+    names = {r[0] for r in reg._conn.execute(
         "SELECT name FROM sqlite_schema WHERE type='table'"
     ).fetchall()}
-    assert names == {"connections", "tables_cache", "columns_cache", "uri_templates"}
+    assert names == {"schemas", "uri_templates"}
+
+
+# --- put / get round-trip via on-disk files -----------------------------
+def test_put_writes_file_and_indexes_it(reg, tmp_path):
+    row = reg.put("openapi", "lm-studio", "components", "User", _USER)
+    # File exists at the advertised path.
+    abs_ = reg.root / row.path
+    assert abs_.is_file()
+    # Contents round-trip exactly.
+    assert json.loads(abs_.read_text()) == _USER
+    # Retrieval goes through the index + file read.
+    assert reg.get("openapi", "lm-studio", "components", "User") == _USER
+
+
+def test_put_replaces_existing(reg):
+    reg.put("openapi", "lm-studio", "components", "User", _USER)
+    reg.put("openapi", "lm-studio", "components", "User",
+            {"type": "object", "properties": {"x": {"type": "string"}}})
+    got = reg.get("openapi", "lm-studio", "components", "User")
+    assert list(got["properties"]) == ["x"]
+
+
+def test_get_missing_returns_none(reg):
+    assert reg.get("openapi", "nope", "components", "x") is None
+
+
+# --- find / list --------------------------------------------------------
+def test_find_by_kind_and_api(reg):
+    reg.put("openapi", "lm-studio", "components", "User", _USER)
+    reg.put("openapi", "lm-studio", "operations", "chatCompletions", _CHAT_COMPLETIONS)
+    reg.put("asyncapi", "chat", "operations", "sendMessage", _CHAT_COMPLETIONS)
+    rows = list(reg.find(kind="openapi"))
+    assert {(r.category, r.name) for r in rows} == {
+        ("components", "User"),
+        ("operations", "chatCompletions"),
+    }
+
+
+def test_find_across_apis_by_component_name(reg):
+    reg.put("openapi", "app-a", "components", "User", _USER)
+    reg.put("openapi", "app-b", "components", "User", _USER)
+    hits = list(reg.find(name="User"))
+    assert {r.api for r in hits} == {"app-a", "app-b"}
+
+
+# --- JDBC URI-template matching -----------------------------------------
+def test_jdbc_uri_template_collapses_hosts(reg):
+    reg.register_template("jdbc", "jdbc:postgresql://{host}:{port}/{db}")
+    reg.put(
+        "jdbc",
+        "jdbc:postgresql://db1.example.com:5432/app",
+        "tables", "users",
+        {"type": "object", "properties": {"id": {"type": "integer"}}},
+    )
+    # Different concrete URI → same template → cached hit.
+    got = reg.get("jdbc", "jdbc:postgresql://db2.example.com:6543/other",
+                  "tables", "users")
+    assert got is not None
+    # find() under the template picks up the entry too.
+    rows = list(reg.find(kind="jdbc",
+                         api="jdbc:postgresql://another:5432/x"))
+    assert len(rows) == 1 and rows[0].name == "users"
+
+
+def test_sqlite_file_and_memory_share_template(reg):
+    reg.register_template("jdbc", "jdbc:sqlite:{path}")
+    reg.put("jdbc", "jdbc:sqlite::memory:", "tables", "t",
+            {"type": "object"})
+    assert reg.get("jdbc", "jdbc:sqlite:/tmp/x.db", "tables", "t") is not None
+
+
+def test_unregistered_uri_uses_itself_as_template(reg):
+    reg.put("jdbc", "jdbc:mariadb://x/y", "tables", "t",
+            {"type": "object"})
+    assert reg.get("jdbc", "jdbc:mariadb://x/y", "tables", "t") is not None
+    assert reg.get("jdbc", "jdbc:mariadb://other/z", "tables", "t") is None
+
+
+# --- delete / clear -----------------------------------------------------
+def test_delete_removes_file_and_index_row(reg):
+    row = reg.put("openapi", "a", "components", "User", _USER)
+    abs_ = reg.root / row.path
+    assert abs_.is_file()
+    assert reg.delete("openapi", "a", "components", "User") is True
+    assert not abs_.is_file()
+    assert reg.get("openapi", "a", "components", "User") is None
+    # Second delete is a no-op.
+    assert reg.delete("openapi", "a", "components", "User") is False
+
+
+def test_clear_scoped_to_api_deletes_files(reg):
+    reg.put("openapi", "a", "components", "X", _USER)
+    reg.put("openapi", "b", "components", "X", _USER)
+    reg.clear(kind="openapi", api="a")
+    assert reg.get("openapi", "a", "components", "X") is None
+    assert reg.get("openapi", "b", "components", "X") is not None
+
+
+def test_clear_all_empties_everything(reg):
+    reg.put("openapi", "a", "components", "X", _USER)
+    reg.put("asyncapi", "b", "operations", "Y", _CHAT_COMPLETIONS)
+    reg.clear()
+    assert list(reg.find()) == []
+    # Files also gone.
+    schemas_dir = reg.root / "schemas"
+    leaves = [p for p in schemas_dir.rglob("*.schema.json")]
+    assert leaves == []
