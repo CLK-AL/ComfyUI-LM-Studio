@@ -29,6 +29,16 @@ def _file(p: Path) -> Callable[[], dict]:
     return lambda: load_spec(p)
 
 
+def _sqlite_from_ddl(p: Path) -> Callable[[], dict]:
+    """Return a zero-arg callable that applies a .sq / .sql file's DDL
+    to an in-memory SQLite and yields a JDBC-shaped `{"tables": ...}`
+    descriptor — the exact shape `to_jsonschema.jdbc.convert()` eats."""
+    def _load():
+        from ..to_jsonschema.sqlite import from_ddl
+        return from_ddl(p.read_text())
+    return _load
+
+
 # The spec bodies live under /api/<kind>/spec/ — single source of truth
 # shared with the jbang mock facade. Each preset names its kind so new
 # spec types (AsyncAPI / GraphQL / MCP manifests) slot in next to it.
@@ -66,6 +76,19 @@ PRESETS: dict[str, Preset] = {
             "returned as GeoJSON. Binds to select/insert/update/delete operations."
         ),
         spec=_file(API_ROOT / "jdbc" / "spec" / "sample-tables.yaml"),
+        kind="jdbc",
+    ),
+    "sample-tables-local": Preset(
+        name="sample-tables-local",
+        title="Sample tables (local SQLite via SQLDelight .sq)",
+        description=(
+            "Same two tables, sourced from the SQLDelight .sq file. Python "
+            "applies the DDL to an in-memory SQLite and introspects it — "
+            "identical to what `jbang api.mock.jbang.kt jdbc serve "
+            "--jdbc-url jdbc:sqlite::memory: --sql-file …sample-tables.sq` "
+            "does on the server side. One source of truth, both sides."
+        ),
+        spec=_sqlite_from_ddl(API_ROOT / "jdbc" / "spec" / "sample-tables.sq"),
         kind="jdbc",
     ),
 }

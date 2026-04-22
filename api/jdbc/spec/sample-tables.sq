@@ -1,0 +1,48 @@
+-- SQLDelight source for the same schema declared in sample-tables.yaml.
+-- Compiling this against `app.cash.sqldelight:sqlite-dialect:2.0.2`
+-- gives us a typed Kotlin API; loading it into an in-memory SQLite at
+-- runtime via `org.xerial:sqlite-jdbc` gives us a fully-local DB that
+-- the Spring JdbcTemplate server can introspect via DatabaseMetaData
+-- — no Postgres needed for the happy-path test loop.
+--
+-- SQLite is lossy relative to the YAML descriptor in two ways the
+-- runtime flow compensates for:
+--   * No real GEOMETRY type — we model `point` / `bounds` / `region`
+--     as TEXT and round-trip as GeoJSON strings; the Canonical form
+--     still says `format: geojson` because that comes from the YAML
+--     descriptor, not from the live metadata.
+--   * No JSONB — `props` is TEXT with a CHECK(json_valid) constraint
+--     so downstream binding still labels it `format: json`.
+
+CREATE TABLE users (
+    id         INTEGER PRIMARY KEY,
+    email      TEXT    NOT NULL UNIQUE,
+    display    TEXT,
+    signup_ts  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    active     INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1))
+);
+
+CREATE TABLE places (
+    id       INTEGER PRIMARY KEY,
+    name     TEXT    NOT NULL,
+    tags     TEXT,                                   -- JSON array
+    point    TEXT    NOT NULL,                       -- GeoJSON Point
+    bounds   TEXT,                                   -- GeoJSON Polygon
+    region   TEXT,                                   -- GeoJSON MultiPolygon
+    props    TEXT CHECK (props IS NULL OR json_valid(props)),
+    created  TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Example SQLDelight-typed queries (not required for the runtime
+-- flow, but handy when we want a typed Kotlin API for fixtures):
+selectAllUsers:
+SELECT * FROM users;
+
+insertUser:
+INSERT INTO users (email, display, active)
+VALUES (?, ?, ?);
+
+selectPlacesNear:
+SELECT * FROM places
+WHERE json_extract(point, '$.coordinates[0]') BETWEEN ? AND ?
+  AND json_extract(point, '$.coordinates[1]') BETWEEN ? AND ?;

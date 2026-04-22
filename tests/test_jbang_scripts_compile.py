@@ -49,6 +49,12 @@ def test_api_mock_jbang_compiles():
     assert "ktor-server-websockets" in cp and "ktor-server-sse" in cp
     assert "rsocket-core-jvm" in cp
     assert "clikt" in cp
+    # JDBC stack — Spring + local SQLite + SQLDelight + Postgres + PostGIS.
+    assert "spring-jdbc" in cp
+    assert "HikariCP" in cp
+    assert "sqlite-jdbc" in cp
+    assert "sqldelight" in cp
+    assert "postgresql" in cp and "postgis" in cp
 
 
 def test_subcommand_tree_runs():

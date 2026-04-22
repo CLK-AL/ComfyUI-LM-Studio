@@ -4,6 +4,18 @@
 //
 // Consumed by api/api.mock.jbang.kt via //SOURCES.
 //
+// Two modes (see api/jdbc/README.md):
+//   Local  — `--jdbc-url jdbc:sqlite::memory:` boots an in-memory
+//            SQLite via `org.xerial:sqlite-jdbc`. `--sql-file` runs
+//            DDL (plain `.sql` or the SQLDelight `.sq` at
+//            api/jdbc/spec/sample-tables.sq) before serving so every
+//            table shows up in `DatabaseMetaData` immediately.
+//            SQLDelight (`app.cash.sqldelight:jdbc-driver:2.0.2`) is
+//            on the classpath so typed fixtures compile; the runtime
+//            discovery path still goes through DatabaseMetaData.
+//   Real   — `--jdbc-url jdbc:postgresql://host:5432/db` plus
+//            `postgresql` + `postgis-jdbc`. Same pipeline.
+//
 // Auth header surface (all optional, honoured per-request):
 //   X-JDBC-User          JDBC user. Can be a URI-template-style string
 //                        like `apikey:<key>` or `jwt:<sub>` that the
@@ -47,17 +59,22 @@ class JdbcServe : CliktCommand(name = "serve") {
     val port    by option("-p", "--port").int().default(8095)
     val host    by option("--host").default("127.0.0.1")
     val jdbcUrl by option("--jdbc-url",
-        help = "e.g. jdbc:postgresql://localhost:5432/gis").default("")
+        help = "Local: jdbc:sqlite::memory:  |  Real: jdbc:postgresql://host:5432/db"
+    ).default("")
     val user    by option("--user",
         help = "JDBC user; may be overridden per-request via X-JDBC-User.").default("")
     val pass    by option("--pass",
         help = "JDBC password / token; may be overridden per-request via X-JDBC-Password.").default("")
+    val sqlFile by option("--sql-file",
+        help = "Bootstrap SQL / SQLDelight .sq to run after connecting (local mode)."
+    ).default("")
 
     override fun run() {
-        jdbcLog.info("jdbc mock on http://{}:{}  (default url={}, user={})",
+        jdbcLog.info("jdbc mock on http://{}:{}  (url={}, user={}, sql={})",
             host, port,
             if (jdbcUrl.isBlank()) "<per-request>" else jdbcUrl,
-            if (user.isBlank())    "<per-request>" else user)
+            if (user.isBlank())    "<per-request>" else user,
+            if (sqlFile.isBlank()) "<none>"        else sqlFile)
         // Discovery-first flow (follow-up impl):
         //
         //   1. Resolve connection:

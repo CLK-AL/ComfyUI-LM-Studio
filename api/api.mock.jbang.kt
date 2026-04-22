@@ -22,12 +22,15 @@
 //DEPS io.rsocket.kotlin:rsocket-core-jvm:0.20.0
 //DEPS io.rsocket.kotlin:rsocket-transport-ktor-websocket-server-jvm:0.20.0
 
-// --- JDBC (Spring + Postgres + PostGIS) ---
+// --- JDBC (Spring + Postgres + PostGIS + local SQLite via SQLDelight) ---
 //DEPS org.springframework:spring-jdbc:6.1.12
 //DEPS org.springframework:spring-tx:6.1.12
 //DEPS com.zaxxer:HikariCP:5.1.0
 //DEPS org.postgresql:postgresql:42.7.4
 //DEPS net.postgis:postgis-jdbc:2024.1.0
+//DEPS org.xerial:sqlite-jdbc:3.46.1.0
+//DEPS app.cash.sqldelight:jdbc-driver:2.0.2
+//DEPS app.cash.sqldelight:runtime-jvm:2.0.2
 
 // --- CLI + logging ---
 //DEPS com.github.ajalt.clikt:clikt-jvm:5.0.3
