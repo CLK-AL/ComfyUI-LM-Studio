@@ -82,27 +82,38 @@
 //DEPS com.github.ajalt.clikt:clikt-jvm:5.0.3
 //DEPS org.slf4j:slf4j-simple:2.0.13
 
-//SOURCES common/Naming.kt
-//SOURCES common/ComponentTables.kt
-//SOURCES common/SqlTypes.kt
-//SOURCES common/FormatType.kt
-//SOURCES common/JClassKClass.kt
-//SOURCES common/JdbcExposed.kt
-//SOURCES common/IcsVcfParser.kt
-//SOURCES common/FakeProvider.kt
-//SOURCES common/DatafakerProvider.kt
-//SOURCES common/APIMock.kt
-//SOURCES openapi/Wiremock.kt
-//SOURCES asyncapi/AsyncApiServer.kt
-//SOURCES mcp/McpServer.kt
-//SOURCES rsocket/RSocketServer.kt
-//SOURCES jdbc/JdbcServer.kt
+// --- dotenv (shared `api.env` loader — same file Python reads) ---
+// `api.env` at the repo root defines relative paths (API_ROOT, PY_MAIN,
+// …) plus tool homes (JBANG_HOME, KOTLIN_HOME, GRADLE_HOME) + port
+// defaults (WIREMOCK_PORT, …). APIMock.kt loads it at startup so every
+// subcommand reads the same config the Python side sees via dotenv.
+//DEPS io.github.cdimascio:dotenv-kotlin:6.4.1
 
-// Thin jbang shell around `common/APIMock.kt`. All Clikt wiring, the
-// root command, and the subcommand tree live under `common/` so the
-// same entry point can be reused from a KMP Compose Multiplatform
-// module without copying the group/subcommand layout. This file only
-// declares the JVM stack (jbang //DEPS + //SOURCES) and forwards
-// process args to `apiMockMain`.
+// KMP layout — commonMain holds KMP-portable sources; jbangMain holds
+// JVM-specific code (JDBC, Jackson, ical4j, WireMock, Ktor, …).
+//SOURCES src/commonMain/kotlin/al/clk/api/Naming.kt
+//SOURCES src/commonMain/kotlin/al/clk/api/ComponentTables.kt
+//SOURCES src/commonMain/kotlin/al/clk/api/SqlTypes.kt
+//SOURCES src/commonMain/kotlin/al/clk/api/FormatType.kt
+//SOURCES src/commonMain/kotlin/al/clk/api/FakeProvider.kt
+//SOURCES src/commonMain/kotlin/al/clk/api/APIMock.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/JClassKClass.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/JdbcExposed.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/IcsVcfParser.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/DatafakerProvider.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/openapi/Wiremock.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/asyncapi/AsyncApiServer.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/mcp/McpServer.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/rsocket/RSocketServer.kt
+//SOURCES src/jbangMain/kotlin/al/clk/api/jdbc/JdbcServer.kt
+
+// Thin jbang shell around `src/commonMain/kotlin/al/clk/api/APIMock.kt`.
+// All Clikt wiring, the root command, and the subcommand tree live
+// under `commonMain/` (KMP-portable — Clikt 5.x has commonMain
+// publications) and `jbangMain/` (JVM-specific protocol handlers).
+// This file only declares the JVM stack (jbang //DEPS + //SOURCES)
+// and forwards process args to `apiMockMain`.
+
+import al.clk.api.apiMockMain
 
 fun main(args: Array<String>) = apiMockMain(args)

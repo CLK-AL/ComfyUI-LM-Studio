@@ -170,6 +170,55 @@ OpenAPI becomes AsyncAPI the moment you add an adapter that hands
 `binding.py` an `(operation-like dict, components-like dict)` pair.
 GraphQL, MCP tool manifests and gRPC plug in the same way.
 
+## Repository layout
+
+Kotlin, Python and Proto all share a single KMP-style source tree
+rooted at `src/`, with the `al.clk.api` package reused across every
+language. `api/api.mock.jbang.kt` is a thin Clikt shell that hands
+control to `al.clk.api.apiMockMain` in `commonMain/`.
+
+```
+.
+├── api.env                           ← shared env (dotenv-kotlin + python-dotenv)
+├── __init__.py, node.py              ← upstream LMStudioNode (root-level, for drift check)
+├── comfyui_openapi_node/             ← ComfyUI custom-node entry (thin re-export shell)
+│   ├── __init__.py                   →  from al.clk.api import NODE_CLASS_MAPPINGS
+│   └── node.py                       →  from al.clk.api.node import OpenAPINode
+├── api/
+│   ├── api.mock.jbang.kt             ← //DEPS + //SOURCES shell; calls apiMockMain(args)
+│   ├── openapi/spec/…                ← YAML/JSON specs (LM Studio etc.)
+│   ├── asyncapi/spec/…
+│   ├── jdbc/spec/…
+│   └── src/
+│       ├── proto/al/clk/api/types.proto        (package al.clk.api)
+│       ├── commonMain/kotlin/al/clk/api/       KMP-portable Kotlin
+│       │   ├── APIMock.kt            Clikt root + `apiMockMain`
+│       │   ├── FormatType.kt         one-hop mapper (KClass↔JClass↔PyClass)
+│       │   ├── SqlTypes.kt, Naming.kt, ComponentTables.kt, FakeProvider.kt
+│       └── jbangMain/kotlin/al/clk/api/        JVM-only
+│           ├── JClassKClass.kt       java.*, Jackson refs live here
+│           ├── JdbcExposed.kt, IcsVcfParser.kt, DatafakerProvider.kt
+│           └── {openapi,asyncapi,mcp,rsocket,jdbc}/…Server.kt
+└── src/
+    ├── pyMain/py/al/clk/api/         Python mirror (package al.clk.api)
+    │   ├── format_type.py, naming.py, registry.py, node.py
+    │   ├── entity_store.py, schema_registry.py, schema_patch.py
+    │   └── {presets,protocols,to_jsonschema}/…
+    └── pyTest/py/al/clk/api/         pytest suite
+        ├── conftest.py, bootstrap.py, fixtures/
+        └── test_*.py
+```
+
+`api.env` is the shared configuration file — `python-dotenv` in
+`conftest.py` and `dotenv-kotlin` in `APIMock.kt` both read the same
+keys (`API_ROOT`, `PY_MAIN`, `WIREMOCK_PORT`, `JBANG_HOME`,
+`KOTLIN_HOME`, `GRADLE_HOME`, …), so switching venvs or SDKMAN
+layouts is a one-file change.
+
+![folders](./puml/folders.png)
+
+Full diagram source: [`puml/folders.puml`](./puml/folders.puml).
+
 ## Testing
 
 The node is the unit under test: a ComfyUI node's public surface is just
@@ -189,8 +238,9 @@ dependencies is required at test time:
 
 ### What we test
 
-`tests/test_comfyui_mock.py` exercises `LMStudioNode.get_response` with
-`use_sdk=False` (API path) against the WireMock facade:
+`src/pyTest/py/al/clk/api/test_comfyui_mock.py` exercises
+`LMStudioNode.get_response` with `use_sdk=False` (API path) against
+the WireMock facade:
 
 | Case                  | Checks                                                                      |
 | --------------------- | ---------------------------------------------------------------------------- |
@@ -234,8 +284,8 @@ Both launchers discover the ComfyUI virtualenv in `./venv`, `./.venv`,
 `COMFYUI_VENV=/path/to/venv`.
 
 ```bash
-./run-tests.sh                                   # Linux / macOS
-./run-tests.sh tests/test_comfyui_mock.py -v     # extra pytest args forward
+./run-tests.sh                                                         # Linux / macOS
+./run-tests.sh src/pyTest/py/al/clk/api/test_comfyui_mock.py -v        # forward flags
 ```
 
 ```powershell

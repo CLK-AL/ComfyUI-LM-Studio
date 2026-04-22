@@ -1,0 +1,264 @@
+// Source of truth for the FormatType bridge.
+//
+// This file is consumed three ways:
+//
+//   • Wire (Kotlin Multiplatform, Square)
+//       wire-gradle-plugin → generates KMP-portable `*.kt` into
+//       commonMain; classes land next to api/common/FormatType.kt.
+//
+//   • Moshi (JSON round-trip — JVM + Kotlin/Native)
+//       moshi-kotlin with the Wire adapters lets us read/write the
+//       same messages as pretty JSON without writing mappers.
+//
+//   • protoc + Python `protobuf`
+//       generates comfyui_openapi_node/gen/types_pb2.py; the
+//       Python FormatType class layers on top of those messages.
+//
+// The FormatCatalog at the bottom is the exact rowset served by
+// `api/api.mock.jbang.kt openapi start` for anyone reading it over
+// the wire (binary pb2 + JSON via Moshi).
+
+syntax = "proto3";
+
+package al.clk.api;
+
+// ----- closed-set vocabulary enums --------------------------------------
+enum JsonType {
+  JT_UNSPECIFIED = 0;
+  JT_STRING      = 1;
+  JT_INTEGER     = 2;
+  JT_NUMBER      = 3;
+  JT_BOOLEAN     = 4;
+  JT_OBJECT      = 5;
+  JT_ARRAY       = 6;
+  JT_NULL        = 7;
+}
+
+enum JsonFormat {
+  JF_NONE          = 0;
+  JF_TEXTAREA      = 1;
+  JF_PASSWORD      = 2;
+  JF_EMAIL         = 3;
+  JF_TEL           = 4;
+  JF_URI           = 5;
+  JF_UUID          = 6;
+  JF_COLOR         = 7;
+  JF_DATE          = 8;
+  JF_TIME          = 9;
+  JF_DATE_TIME     = 10;
+  JF_DURATION      = 11;
+  JF_IPV4          = 12;
+  JF_IPV6          = 13;
+  JF_HOSTNAME      = 14;
+  JF_REGEX         = 15;
+  JF_JSON_POINTER  = 16;
+  JF_BYTE          = 17;
+  JF_BINARY        = 18;
+  JF_GEOJSON       = 19;
+  JF_JSON          = 20;
+  JF_INT32         = 21;
+  JF_INT64         = 22;
+  JF_FLOAT         = 23;
+  JF_DOUBLE        = 24;
+  JF_ENUM          = 25;
+  JF_SEARCH        = 26;
+  JF_HIDDEN        = 27;
+  JF_MONTH         = 28;
+  JF_WEEK          = 29;
+  JF_MARKDOWN      = 30;
+  JF_YEAR          = 31;
+  JF_QUARTER       = 32;
+  JF_DAY           = 33;
+  JF_HOUR          = 34;
+  JF_MINUTE        = 35;
+  JF_SECOND        = 36;
+  JF_MILLISECOND   = 37;
+  JF_TIMEZONE      = 38;
+  // ComfyUI domain media formats
+  JF_IMAGE         = 39;
+  JF_LATENT        = 40;
+  JF_MASK          = 41;
+  JF_AUDIO         = 42;
+  JF_VIDEO         = 43;
+  JF_MODEL_REF     = 44;
+  JF_CONDITIONING  = 45;
+}
+
+// Numeric values mirror java.sql.Types exactly. Negative values
+// cannot be enum members in proto3, so we carry the mapping as a
+// string name and let the language-side helper translate.
+enum SqlType {
+  ST_UNSPECIFIED              = 0;
+  ST_BIT                      = 1;  // java.sql.Types.BIT  = -7
+  ST_TINYINT                  = 2;  // -6
+  ST_SMALLINT                 = 3;  //  5
+  ST_INTEGER                  = 4;  //  4
+  ST_BIGINT                   = 5;  // -5
+  ST_FLOAT                    = 6;
+  ST_REAL                     = 7;
+  ST_DOUBLE                   = 8;
+  ST_NUMERIC                  = 9;
+  ST_DECIMAL                  = 10;
+  ST_CHAR                     = 11;
+  ST_VARCHAR                  = 12;
+  ST_LONGVARCHAR              = 13;
+  ST_DATE                     = 14;
+  ST_TIME                     = 15;
+  ST_TIMESTAMP                = 16;
+  ST_TIMESTAMP_WITH_TIMEZONE  = 17;
+  ST_TIME_WITH_TIMEZONE       = 18;
+  ST_BINARY                   = 19;
+  ST_VARBINARY                = 20;
+  ST_LONGVARBINARY            = 21;
+  ST_NULL                     = 22;
+  ST_OTHER                    = 23;
+  ST_JAVA_OBJECT              = 24;
+  ST_BLOB                     = 25;
+  ST_CLOB                     = 26;
+  ST_NCHAR                    = 27;
+  ST_NVARCHAR                 = 28;
+  ST_LONGNVARCHAR             = 29;
+  ST_NCLOB                    = 30;
+  ST_BOOLEAN                  = 31;
+  ST_ROWID                    = 32;
+  ST_SQLXML                   = 33;
+  ST_REF_CURSOR               = 34;
+  ST_ARRAY                    = 35;
+  ST_STRUCT                   = 36;
+  ST_REF                      = 37;
+  ST_DATALINK                 = 38;
+}
+
+enum HtmlInputType {
+  HI_UNSPECIFIED    = 0;
+  HI_TEXT           = 1;
+  HI_EMAIL          = 2;
+  HI_URL            = 3;
+  HI_TEL            = 4;
+  HI_NUMBER         = 5;
+  HI_DATE           = 6;
+  HI_TIME           = 7;
+  HI_DATETIME_LOCAL = 8;
+  HI_COLOR          = 9;
+  HI_CHECKBOX       = 10;
+  HI_FILE           = 11;
+  HI_PASSWORD       = 12;
+  HI_RADIO          = 13;
+  HI_RANGE          = 14;
+  HI_SEARCH         = 15;
+  HI_MONTH          = 16;
+  HI_WEEK           = 17;
+  HI_HIDDEN         = 18;
+  HI_TEXTAREA       = 19;   // <textarea>
+  HI_SELECT         = 20;   // <select>
+  HI_SELECT_MULTI   = 21;   // <select multiple>
+}
+
+enum ComfyType {
+  CY_UNSPECIFIED         = 0;
+  CY_STRING              = 1;
+  CY_INT                 = 2;
+  CY_FLOAT               = 3;
+  CY_BOOLEAN             = 4;
+  CY_COMBO               = 5;
+  // ComfyUI domain types
+  CY_IMAGE               = 6;
+  CY_LATENT              = 7;
+  CY_MASK                = 8;
+  CY_MODEL               = 9;
+  CY_CLIP                = 10;
+  CY_VAE                 = 11;
+  CY_CONDITIONING        = 12;
+  CY_CONTROL_NET         = 13;
+  CY_STYLE_MODEL         = 14;
+  CY_CLIP_VISION         = 15;
+  CY_CLIP_VISION_OUTPUT  = 16;
+  CY_UPSCALE_MODEL       = 17;
+  CY_AUDIO               = 18;
+  CY_VIDEO               = 19;
+  CY_WEBCAM              = 20;
+}
+
+enum ComposeWidget {
+  CW_UNSPECIFIED        = 0;
+  CW_TEXT_FIELD         = 1;
+  CW_OUTLINED_TEXT_FIELD= 2;
+  CW_PASSWORD_FIELD     = 3;
+  CW_SEARCH_FIELD       = 4;
+  CW_COLOR_PICKER       = 5;
+  CW_DATE_PICKER        = 6;
+  CW_TIME_PICKER        = 7;
+  CW_DATETIME_PICKER    = 8;
+  CW_MONTH_PICKER       = 9;
+  CW_WEEK_PICKER        = 10;
+  CW_FILE_PICKER        = 11;
+  CW_MAP_PICKER         = 12;
+  CW_SLIDER             = 13;
+  CW_RANGE_SLIDER       = 14;
+  CW_SWITCH             = 15;
+  CW_CHECKBOX           = 16;
+  CW_CHECKBOX_GROUP     = 17;
+  CW_RADIO_GROUP        = 18;
+  CW_DROPDOWN_MENU      = 19;
+  CW_HIDDEN_FIELD       = 20;
+  CW_DYNAMIC_PROMPT_FIELD = 21;
+  CW_MARKDOWN_VIEW      = 22;
+  CW_IMAGE_UPLOAD       = 23;
+  CW_MASK_EDITOR        = 24;
+  CW_WEBCAM_CAPTURE     = 25;
+  CW_AUDIO_PLAYER       = 26;
+  CW_VIDEO_PLAYER       = 27;
+  CW_MODEL_PICKER       = 28;
+  CW_LATENT_PREVIEW     = 29;
+  CW_CONDITIONING_VIEW  = 30;
+  CW_KNOB               = 31;
+  CW_NUMBER_FIELD       = 32;
+}
+
+// ComfyUI dynamic-UI flags carried in the widget options dict.
+enum ComfyOption {
+  CO_UNSPECIFIED       = 0;
+  CO_FORCE_INPUT       = 1;  // forceInput
+  CO_DEFAULT_INPUT     = 2;  // defaultInput
+  CO_LAZY              = 3;  // lazy
+  CO_DYNAMIC_PROMPTS   = 4;  // dynamicPrompts
+  CO_MULTILINE         = 5;  // multiline
+  CO_IMAGE_UPLOAD      = 6;  // image_upload
+  CO_IMAGE_FOLDER      = 7;  // image_folder
+  CO_DIRECTORY         = 8;  // directory
+  CO_TOOLTIP_MARKDOWN  = 9;  // tooltip_md
+}
+
+// `display` widget option for INT / FLOAT widgets in ComfyUI.
+enum ComfyDisplay {
+  CD_UNSPECIFIED = 0;
+  CD_NUMBER      = 1;
+  CD_SLIDER      = 2;
+  CD_KNOB        = 3;
+  CD_COLOR       = 4;
+}
+
+// ----- mapping message --------------------------------------------------
+message FormatMapping {
+  JsonType      json_type   = 1;
+  JsonFormat    json_format = 2;
+  SqlType       sql_type    = 3;
+  string        kclass      = 4;    // Kotlin KClass FQN
+  ComposeWidget composable  = 5;
+  HtmlInputType html_input  = 6;
+  ComfyType     comfy       = 7;
+  string        placeholder = 8;
+}
+
+message FormatRow {
+  string        name    = 1;   // "EMAIL", "DATE", "INT64", …
+  FormatMapping mapping = 2;
+}
+
+// The entire FormatType catalog — the wire representation of the
+// same enum we maintain in Python (format_type.py) and Kotlin
+// (api/common/FormatType.kt). Used as both a round-trip contract
+// and the parity source.
+message FormatCatalog {
+  repeated FormatRow rows = 1;
+}

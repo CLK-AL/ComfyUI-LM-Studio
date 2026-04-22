@@ -1,0 +1,178 @@
+@startuml folders
+' Full repository layout — KMP-style source tree shared by Kotlin, Python
+' and Proto. Every file that lives under `api/src/`, `src/pyMain/` and
+' `src/pyTest/` is listed; repo-root helpers (`api.env`, ComfyUI shell)
+' are called out at the top. Re-render with
+' `java -jar plantuml.jar -tpng puml/folders.puml`.
+skinparam defaultFontName "JetBrains Mono"
+skinparam shadowing false
+skinparam roundCorner 6
+skinparam rectangleBorderColor #888
+skinparam rectangleBackgroundColor #FAFAFA
+skinparam nodesep 10
+skinparam ranksep 15
+
+title Repository layout — one **al.clk.api** package across Kotlin / Python / Proto
+
+' ============================================================ Repo root
+rectangle "**Repo root**" as ROOT {
+  card "api.env\n**shared dotenv**" as ENV #FFF3CD
+  card "__init__.py\nnode.py\n(upstream LMStudioNode — drift-checked)" as UP
+  rectangle "comfyui_openapi_node/\n**ComfyUI custom-node shell**" as CUI #E7F1FF {
+    card "__init__.py\n→ NODE_CLASS_MAPPINGS\n→ NODE_DISPLAY_NAME_MAPPINGS" as CUI_INIT
+    card "node.py\n→ OpenAPINode" as CUI_NODE
+  }
+  card "pytest.ini" as PYINI
+  card "run-tests.sh\nrun-tests.ps1" as RUNSH
+  card ".sdkmanrc" as SDKMANRC
+}
+
+' ============================================================= api/ tree
+rectangle "api/" as API {
+  card "**api.mock.jbang.kt**\n//KOTLIN + //JAVA pins\n//DEPS + //SOURCES\n→ apiMockMain(args)" as JBANG #D1F0D1
+
+  rectangle "openapi/spec/" as OPENAPI_SPEC {
+    card "lm-studio.yaml\nsecured-demo.yaml" as OPEN_SPECS
+  }
+  rectangle "asyncapi/spec/" as ASYNC_SPEC {
+    card "simple-chat.yaml\nlm-studio-stream.yaml" as ASYNC_SPECS
+  }
+  rectangle "jdbc/spec/" as JDBC_SPEC {
+    card "sample-tables.yaml\nsample-tables.sq" as JDBC_SPECS
+  }
+  rectangle "grpc/" as GRPC #F5F5F5 {
+    card "(stub)" as GRPC_STUB
+  }
+
+  rectangle "src/" as API_SRC {
+
+    rectangle "proto/al/clk/api/" as PROTO #FFF2E6 {
+      card "types.proto\n(package al.clk.api)\nJsonType · JsonFormat · SqlType\nHtmlInputType · ComfyType · ComposeWidget\nComfyOption · ComfyDisplay · FormatMapping" as TYPES
+    }
+
+    rectangle "commonMain/kotlin/al/clk/api/\n**KMP-portable Kotlin**" as COMMON #E6F7E6 {
+      card "APIMock.kt\nClikt root + apiMockMain\nloadApiEnv (dotenv-kotlin)" as APIMOCK
+      card "FormatType.kt\nONE-HOP mapper (KClass ↔ JClass ↔ PyClass)\n+ JsonType/JsonFormat/HtmlInputType/\n  ComfyType/ComposeWidget/ComfyOption/\n  ComfyDisplay enums\n+ ICU: IcuNumberStyle/IcuPluralCategory/\n  IcuUnit/IcuCurrency/IcuPersonNameStyle\n+ RFC: IcalComponent/IcalStatus/…/\n  VCardEmailType/VCardTelType/VCardGender\n+ CalendarSystem · IcalWeekDay · IcalFreq" as FT
+      card "SqlTypes.kt\njava.sql.Types ↔ FormatType" as SQLT
+      card "Naming.kt\ncomponent / table / patch / SSE" as NAM
+      card "ComponentTables.kt\nJSON Schema ↔ SQLite DDL" as CT
+      card "FakeProvider.kt\ninterface + BaseFakeProvider + Factory\n(--faker <name> on subcommands)" as FP
+      card "codecs.kt\nJSON / CBOR / Protobuf / XML / MsgPack" as CODECS
+    }
+
+    rectangle "jbangMain/kotlin/al/clk/api/\n**JVM-only Kotlin**" as JBANG_MAIN #FFE6E6 {
+      card "JClassKClass.kt\nKClassEnum (kotlin.reflect) +\nJClassEnum (java.*, Jackson) +\nPyClassEnum (string FQN) +\nKmpToJvm bridge" as JCLASS
+      card "JdbcExposed.kt\nSpring JdbcTemplate + SQLDelight" as JDE
+      card "IcsVcfParser.kt\nical4j + ez-vcard → jCal/jCard" as ICV
+      card "DatafakerProvider.kt\nregistered as 'datafaker'" as DF
+      card "openapi/Wiremock.kt\nOpenApiGroup + OpenApiStart" as WM
+      card "asyncapi/AsyncApiServer.kt\nAsyncApiGroup + AsyncApiEcho" as AS
+      card "mcp/McpServer.kt\nMcpGroup + McpServe" as MC
+      card "rsocket/RSocketServer.kt\nRSocketGroup + RSocketServe" as RS
+      card "jdbc/JdbcServer.kt\nJdbcGroup + JdbcServe" as JD
+    }
+  }
+}
+
+' ============================================================ src/pyMain
+rectangle "src/pyMain/py/\n**Python mirror**" as PYMAIN #E6F7E6 {
+
+  card "al/__init__.py\nal/clk/__init__.py\nal/clk/api/__init__.py\n  → NODE_CLASS_MAPPINGS" as PY_INITS
+
+  rectangle "al/clk/api/  core" as PY_CORE_R {
+    card "format_type.py (bridge twin)" as PY_FT
+    card "sql_types.py" as PY_ST
+    card "naming.py" as PY_NAM
+    card "component_tables.py" as PY_CT
+    card "fake_generator.py (Faker)" as PY_FG
+    card "ics_vcf.py (vobject + icalendar)" as PY_ICV
+    card "codecs.py" as PY_COD
+    card "spec_kinds.py" as PY_SK
+    card "loader.py" as PY_LOAD
+    card "schema.py\nschema_patch.py (RFC 6901/6902/7396)\nschema_registry.py (SQLite JSON1)" as PY_SCHEMA
+    card "registry.py (ComfyUI node registry)" as PY_REG
+    card "entity_store.py (one-row, N projections + SSE)" as PY_ES
+    card "binding.py (op → INPUT_TYPES)" as PY_BIND
+    card "security.py (basic/bearer/JWT/OAuth/OIDC/API-key)" as PY_SEC
+    card "node.py (OpenAPINode class)" as PY_NODE
+  }
+
+  rectangle "al/clk/api/presets/" as PY_PRESETS {
+    card "__init__.py\nlm-studio · simple-chat · lm-studio-stream\nsample-tables · sample-tables-local" as PY_PRESETS_F
+  }
+
+  rectangle "al/clk/api/protocols/" as PY_PROTO {
+    card "__init__.py · http.py · sse.py\nwss.py · jdbc.py" as PY_PROTO_F
+  }
+
+  rectangle "al/clk/api/to_jsonschema/" as PY_TOJS {
+    card "__init__.py · openapi.py · asyncapi.py\ngraphql.py · grpc.py · jdbc.py · mcp.py\nsqlite.py" as PY_TOJS_F
+  }
+}
+
+' ============================================================ src/pyTest
+rectangle "src/pyTest/py/al/clk/api/\n**pytest suite (252 cases)**" as PYTEST #E6F0FF {
+  card "conftest.py\n(python-dotenv load of api.env,\n WireMock facade spawn)" as PY_CONF
+  card "bootstrap.py (SDKMAN + jbang + spec fetch)" as PY_BOOT
+
+  rectangle "fixtures/" as FIX {
+    card "format-type-bridge.json (128 rows)\nnaming-cases.json" as FIX_F
+  }
+
+  card "test_format_type.py\ntest_format_type_coverage.py\ntest_format_pattern.py" as T_FT
+  card "test_naming_integration.py\ntest_naming_parity.py" as T_NAM
+  card "test_schema_types.py\ntest_schema_patch.py\ntest_schema_registry.py\ntest_registry_json1.py" as T_SCHEMA
+  card "test_component_tables.py\ntest_to_jsonschema.py\ntest_ui_schema.py" as T_CT
+  card "test_entity_store.py\ntest_sqlite_local.py" as T_STORE
+  card "test_binding.py\ntest_openapi_node.py\ntest_node_contract.py" as T_NODE
+  card "test_comfyui_mock.py\ntest_api_mode.py" as T_MOCK
+  card "test_asyncapi_preset.py\ntest_jdbc_schema.py" as T_PRESETS
+  card "test_security.py\ntest_ics_vcf.py\ntest_fake_generator.py" as T_MISC
+  card "test_jbang_scripts_compile.py" as T_JBANG
+}
+
+' ============================================================= Edges
+
+' Dotenv flows
+ENV -[#orange]-> APIMOCK     : "dotenv-kotlin"
+ENV -[#orange]-> PY_CONF     : "python-dotenv"
+
+' ComfyUI discovery
+CUI_INIT --> PY_INITS        : "sys.path + re-export"
+CUI_NODE --> PY_NODE         : "re-exports OpenAPINode"
+
+' jbang shell feeds //SOURCES
+JBANG    --> APIMOCK         : "main → apiMockMain"
+JBANG    --> COMMON          : "//SOURCES"
+JBANG    --> JBANG_MAIN      : "//SOURCES"
+
+' Bridge relationships
+FT       --> JCLASS          : "KClassEnum ↔ JClassEnum\n(Jackson) ↔ PyClassEnum"
+FT       ..> PY_FT           : "5-way bridge (parity tests)"
+TYPES    ..> FT              : "proto source of truth\n(Wire + Moshi + protoc)"
+
+' Spec files are the truth for both sides
+OPEN_SPECS  --> WM           : "--spec"
+OPEN_SPECS  --> PY_PRESETS_F : "file preset"
+ASYNC_SPECS --> AS           : "Ktor handlers"
+ASYNC_SPECS --> PY_PRESETS_F : "asyncapi presets"
+JDBC_SPECS  --> JD           : "--sql-file"
+JDBC_SPECS  --> PY_PRESETS_F : "jdbc presets"
+
+' pytest drives WireMock
+PY_CONF  --> JBANG           : "spawn openapi start"
+PY_BOOT  --> SDKMANRC        : "SDKMAN pins"
+PY_CONF  ..> FIX_F           : "fixture read"
+T_FT     ..> FIX_F
+T_NAM    ..> FIX_F
+
+' Test canaries point at code
+T_JBANG  ..> JBANG           : "jbang info classpath"
+T_FT     ..> PY_FT
+T_SCHEMA ..> PY_SCHEMA
+T_STORE  ..> PY_ES
+T_NODE   ..> PY_NODE
+T_PRESETS..> PY_PRESETS_F
+T_MOCK   ..> CUI_NODE
+
+@enduml
