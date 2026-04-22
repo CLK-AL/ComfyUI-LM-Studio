@@ -1,0 +1,24 @@
+tables:
+  - name: users
+    primary_key: [id]
+    columns:
+      - { name: id,         sql_type: BIGINT,   pg_type: int8,      nullable: false }
+      - { name: email,      sql_type: VARCHAR,  size: 255,          nullable: false }
+      - { name: display,    sql_type: VARCHAR,  size: 128,          nullable: true }
+      - { name: signup_ts,  sql_type: TIMESTAMP_WITH_TIMEZONE,      nullable: false,
+          default: "CURRENT_TIMESTAMP" }
+      - { name: active,     sql_type: BOOLEAN,  default: true,      nullable: false }
+
+  - name: places
+    primary_key: [id]
+    columns:
+      - { name: id,       sql_type: BIGINT,   pg_type: int8,        nullable: false }
+      - { name: name,     sql_type: VARCHAR,  size: 128,            nullable: false }
+      - { name: tags,     sql_type: ARRAY,                          nullable: true }
+      # PostGIS — returned to / consumed from the client as GeoJSON.
+      - { name: point,    sql_type: OTHER,    pg_type: geometry,    geotype: Point,   nullable: false }
+      - { name: bounds,   sql_type: OTHER,    pg_type: geometry,    geotype: Polygon, nullable: true  }
+      - { name: region,   sql_type: OTHER,    pg_type: geography,   geotype: MultiPolygon, nullable: true }
+      - { name: props,    sql_type: OTHER,    pg_type: jsonb,       nullable: true }
+      - { name: created,  sql_type: TIMESTAMP_WITH_TIMEZONE,         nullable: false,
+          default: "now()" }

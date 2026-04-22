@@ -22,6 +22,13 @@
 //DEPS io.rsocket.kotlin:rsocket-core-jvm:0.20.0
 //DEPS io.rsocket.kotlin:rsocket-transport-ktor-websocket-server-jvm:0.20.0
 
+// --- JDBC (Spring + Postgres + PostGIS) ---
+//DEPS org.springframework:spring-jdbc:6.1.12
+//DEPS org.springframework:spring-tx:6.1.12
+//DEPS com.zaxxer:HikariCP:5.1.0
+//DEPS org.postgresql:postgresql:42.7.4
+//DEPS net.postgis:postgis-jdbc:2024.1.0
+
 // --- CLI + logging ---
 //DEPS com.github.ajalt.clikt:clikt-jvm:5.0.3
 //DEPS org.slf4j:slf4j-simple:2.0.13
@@ -30,6 +37,7 @@
 //SOURCES asyncapi/AsyncApiServer.kt
 //SOURCES mcp/McpServer.kt
 //SOURCES rsocket/RSocketServer.kt
+//SOURCES jdbc/JdbcServer.kt
 
 // One facade to mock every protocol an app ever speaks. A single
 // `jbang api/api.mock.jbang.kt` process can host WireMock stubs
@@ -59,4 +67,5 @@ fun main(args: Array<String>) = ApiMockRoot().subcommands(
     AsyncApiGroup().subcommands(AsyncApiEcho()),
     McpGroup().subcommands(McpServe()),
     RSocketGroup().subcommands(RSocketServe()),
+    JdbcGroup().subcommands(JdbcServe()),
 ).main(args)

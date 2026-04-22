@@ -57,4 +57,15 @@ PRESETS: dict[str, Preset] = {
         spec=_file(API_ROOT / "asyncapi" / "spec" / "lm-studio-stream.yaml"),
         kind="asyncapi",
     ),
+    "sample-tables": Preset(
+        name="sample-tables",
+        title="Sample JDBC tables (users + PostGIS places)",
+        description=(
+            "Two-table JDBC schema showing every column family: bigint, varchar, "
+            "timestamptz, boolean, array, jsonb, and PostGIS geometry/geography "
+            "returned as GeoJSON. Binds to select/insert/update/delete operations."
+        ),
+        spec=_file(API_ROOT / "jdbc" / "spec" / "sample-tables.yaml"),
+        kind="jdbc",
+    ),
 }

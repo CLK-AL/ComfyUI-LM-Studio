@@ -38,6 +38,8 @@ def get_executor(protocol: str):
         from . import wss as mod
     elif protocol == "sse":
         from . import sse as mod
+    elif protocol == "jdbc":
+        from . import jdbc as mod
     else:
         raise ValueError(f"Unsupported protocol: {protocol!r}")
     return mod.execute

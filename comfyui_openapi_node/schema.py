@@ -1,26 +1,57 @@
 """JSON Schema / OpenAPI → ComfyUI INPUT_TYPES mapping.
 
-Covers every standard `type` + `format` combination, and passes every
-constraint (min / max / exclusive bounds / multipleOf / length / pattern
-/ uniqueItems / …) through as extra entries in the options dict so a
-smart UI — or downstream validation — can see them. ComfyUI's built-in
-widgets ignore unknown keys, which makes this safe as a lossless
-projection.
+## Coverage — JSON Schema Draft 2020-12 standard formats
 
-Field names emitted (per-type):
+date-time · date · time · duration · email · idn-email · hostname ·
+idn-hostname · ipv4 · ipv6 · uri · uri-reference · uri-template · iri
+· iri-reference · uuid · regex · json-pointer · relative-json-pointer
+· password (OpenAPI) · byte (OpenAPI) · binary (OpenAPI)
+
+Plus the `x-*` and RJSF-style hints we recognise:
+textarea · json · yaml · markdown · color · tel · geojson
+
+## RJSF uiSchema → ComfyUI widget options
+
+`merge_ui_schema(tuple_, ui_schema)` takes a ComfyUI INPUT_TYPES tuple
+emitted by `json_schema_to_comfy` and overlays RJSF uiSchema hints.
+Supported `ui:widget` values (covers the full RJSF default widget set):
+
+  text        → STRING, multiline=False
+  textarea    → STRING, multiline=True
+  password    → STRING, password=True
+  email       → STRING, format=email
+  color       → STRING, format=color
+  date        → STRING, format=date
+  date-time   → STRING, format=date-time
+  time        → STRING, format=time
+  file        → STRING, is_file_path=True
+  hidden      → tuple unchanged but x-hidden=True annotation set
+  updown      → INT/FLOAT, display=number
+  range       → INT/FLOAT, display=slider
+  select      → combo (already so if schema had enum)
+  radio       → combo + x-display=radio
+  checkbox    → BOOLEAN
+  checkboxes  → STRING multiline + is_json + x-display=checkboxes
+
+Plus RJSF `ui:options`, `ui:help`, `ui:description`, `ui:placeholder`,
+`ui:title`, `ui:disabled`, `ui:readonly`, `ui:autofocus`, `ui:emptyValue`
+all survive as annotations on the ComfyUI options dict.
+
+## Field names emitted on each ComfyUI type
 
   STRING options:
     default, multiline
     min_length, max_length, pattern, format
     placeholder, password, is_json, is_file_path, is_base64
+    x-hidden, x-widget, x-display, x-help, x-title, x-readonly, x-disabled
   INT options:
     default, min, max, step, multiple_of, exclusive_minimum, exclusive_maximum
-    format (int32 | int64)
+    format (int32 | int64), display (number | slider)
   FLOAT options:
     default, min, max, step, multiple_of, exclusive_minimum, exclusive_maximum
-    format (float | double)
+    format (float | double), display (number | slider)
   BOOLEAN options:
-    default
+    default, label_on, label_off
   (enum)     → ( [v1, v2, ...], )    ComfyUI dropdown
 """
 from __future__ import annotations
@@ -54,6 +85,13 @@ _STRING_FORMATS: dict[str, dict] = {
     "yaml":         {"multiline": True},
     "markdown":     {"multiline": True},
     "regex":        {"placeholder": "^.*$"},
+    "iri-reference":        {"placeholder": "https://…"},
+    "json-pointer":         {"placeholder": "/foo/bar"},
+    "relative-json-pointer":{"placeholder": "1/foo"},
+    "color":        {"placeholder": "#RRGGBB"},
+    "tel":          {"placeholder": "+1 555 0100"},
+    "geojson":      {"multiline": True, "is_json": True,
+                     "placeholder": '{"type":"Point","coordinates":[0,0]}'},
 }
 
 # Loose default regexes to fall back on when the spec doesn't supply
@@ -216,8 +254,97 @@ def json_schema_to_comfy(schema: dict | None, name: str = "") -> tuple:
         )
 
     # --- object / oneOf / allOf / anyOf / null / $ref — free-form JSON ---
-    hints: dict[str, Any] = {"is_json": True, "format": "object"}
+    fmt = (schema.get("format") or "").strip()
     if schema.get("type") == "null":
         hints = {"format": "null"}
+    elif fmt and fmt in _STRING_FORMATS:
+        # Honor format when present even on object schemas (e.g. geojson).
+        hints = dict(_STRING_FORMATS[fmt])
+        hints.setdefault("is_json", True)
+        hints["format"] = fmt
+        if schema.get("x-geotype"):
+            hints["x-geotype"] = schema["x-geotype"]
+    else:
+        hints = {"is_json": True, "format": fmt or "object"}
+    # Let `hints` drive `multiline` when it carries one (geojson etc.).
+    multiline = hints.pop("multiline", True)
     return _str(default="{}" if schema.get("type") == "object" else "",
-                multiline=True, **hints)
+                multiline=multiline, **hints)
+
+
+# ----- RJSF uiSchema overlay --------------------------------------------
+# Maps React JSON Schema Form `ui:widget` values to ComfyUI option
+# mutations. Each entry is a callable that takes the current options
+# dict and updates it in place. Keeps unknown widgets harmless
+# (x-widget annotation).
+_UI_WIDGET: dict[str, Any] = {
+    "text":       lambda o: o.update({"multiline": False}),
+    "textarea":   lambda o: o.update({"multiline": True}),
+    "password":   lambda o: o.update({"password": True}),
+    "email":      lambda o: o.update({"format": "email"}),
+    "color":      lambda o: o.update({"format": "color",
+                                      "placeholder": o.get("placeholder") or "#RRGGBB"}),
+    "date":       lambda o: o.update({"format": "date"}),
+    "date-time":  lambda o: o.update({"format": "date-time"}),
+    "time":       lambda o: o.update({"format": "time"}),
+    "file":       lambda o: o.update({"is_file_path": True, "multiline": False}),
+    "hidden":     lambda o: o.update({"x-hidden": True}),
+    "updown":     lambda o: o.update({"display": "number"}),
+    "range":      lambda o: o.update({"display": "slider"}),
+    "radio":      lambda o: o.update({"x-display": "radio"}),
+    "checkbox":   lambda o: None,  # handled in merge_ui_schema (retype → BOOLEAN)
+    "checkboxes": lambda o: o.update({"multiline": True, "is_json": True,
+                                      "x-display": "checkboxes"}),
+    "select":     lambda o: None,  # schema enum already drives this
+}
+
+
+def merge_ui_schema(comfy_tuple: tuple, ui_schema: Mapping | None) -> tuple:
+    """Overlay an RJSF-style uiSchema onto a ComfyUI tuple.
+
+    Safe on `None` / empty / unknown keys — returns the tuple unchanged
+    when it can't apply anything.
+    """
+    if not ui_schema:
+        return comfy_tuple
+    # Extract current options
+    if len(comfy_tuple) == 1:
+        # (enum tuple,) — only widget:radio is meaningful here; rest pass.
+        widget = (ui_schema.get("ui:widget") or "").lower()
+        if widget == "radio":
+            return (comfy_tuple[0], {"x-display": "radio"})
+        return comfy_tuple
+    ctype, opts = comfy_tuple[0], dict(comfy_tuple[1])
+
+    widget = (ui_schema.get("ui:widget") or "").lower()
+
+    # `checkbox` widget coerces the base type to BOOLEAN.
+    if widget == "checkbox" and ctype != "BOOLEAN":
+        return ("BOOLEAN", {"default": bool(opts.get("default") or False)})
+
+    fn = _UI_WIDGET.get(widget)
+    if fn is not None:
+        fn(opts)
+    elif widget:
+        opts["x-widget"] = widget
+
+    # Generic RJSF ui:* passthroughs (purely annotations).
+    for src, dst in (
+        ("ui:placeholder", "placeholder"),
+        ("ui:help",        "x-help"),
+        ("ui:title",       "x-title"),
+        ("ui:description", "x-description"),
+        ("ui:disabled",    "x-disabled"),
+        ("ui:readonly",    "x-readonly"),
+        ("ui:autofocus",   "x-autofocus"),
+        ("ui:emptyValue",  "x-empty-value"),
+    ):
+        if src in ui_schema:
+            opts[dst] = ui_schema[src]
+
+    # ui:options is a dict of arbitrary widget options — pass it through
+    # under `x-ui-options` so downstream widgets can read it.
+    if "ui:options" in ui_schema:
+        opts["x-ui-options"] = dict(ui_schema["ui:options"])
+
+    return (ctype, opts)

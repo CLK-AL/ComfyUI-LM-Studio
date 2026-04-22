@@ -34,6 +34,7 @@ from .protocols import get_executor
 from .security import apply as apply_security
 from .to_jsonschema import Canonical, OperationSchema
 from .to_jsonschema import asyncapi as conv_asyncapi
+from .to_jsonschema import jdbc     as conv_jdbc
 from .to_jsonschema import openapi  as conv_openapi
 
 log = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ NODE_DISPLAY_NAME_MAPPINGS: Dict[str, str] = {"OpenAPINode": "API — Generic"}
 _CONVERTERS = {
     "openapi":  conv_openapi.convert,
     "asyncapi": conv_asyncapi.convert,
+    "jdbc":     conv_jdbc.convert,
 }
 
 # Protocol hint per spec kind. The per-op record can override.
@@ -52,6 +54,7 @@ _DEFAULT_PROTOCOL = {
     "asyncapi": "wss",
     "graphql":  "http",
     "mcp":      "http",
+    "jdbc":     "jdbc",   # protocols/jdbc.py delegates to the Spring Kotlin mock
 }
 
 
