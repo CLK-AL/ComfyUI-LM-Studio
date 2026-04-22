@@ -155,26 +155,27 @@ against the `lmstudio` package — it doesn't go through HTTP.
 
 ### How we test — architecture diagrams
 
-Pre-rendered SVGs are checked in. Re-render with any of:
+Pre-rendered PNGs are checked into `puml/` alongside the sources.
+Re-render with any of:
 
 - **Browser (no install):** [plantuml-wasm](https://github.com/plantuml/plantuml-wasm)
   — pure-JS viewer. Paste a `.puml` file.
 - **Server URL:** https://www.plantuml.com/plantuml/uml/
 - **VS Code:** the *PlantUML* extension renders `.puml` inline.
-- **CLI:** `java -jar plantuml.jar docs/*.puml` (requires `graphviz` for
-  component diagrams).
+- **CLI:** `java -jar plantuml.jar -tpng puml/*.puml` (requires `graphviz`
+  for component diagrams).
 
 **Component view** — what's wired to what, and what's explicitly *absent*
 (ComfyUI runtime, LM Studio server):
 
-![Test components](./docs/test-components.svg)
+![Test components](./puml/test-components.png)
 
 **Sequence view** — one cold-start pytest session, end to end:
 
-![Test sequence](./docs/test-sequence.svg)
+![Test sequence](./puml/test-sequence.png)
 
-Sources: [`docs/test-components.puml`](./docs/test-components.puml),
-[`docs/test-sequence.puml`](./docs/test-sequence.puml).
+Sources: [`puml/test-components.puml`](./puml/test-components.puml),
+[`puml/test-sequence.puml`](./puml/test-sequence.puml).
 
 ### How to run
 
