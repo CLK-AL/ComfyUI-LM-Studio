@@ -1,0 +1,56 @@
+{
+  "_note": "Shared cross-implementation fixture. Python reads it in tests/test_naming_parity.py; the Kotlin mirror in api/common/Naming.kt reads the same file so both sides agree case-for-case.",
+  "snake": {
+    "Book":                    "book",
+    "BookReview":              "book_review",
+    "XMLHttpRequest":          "xml_http_request",
+    "already_snake":           "already_snake",
+    "ChatMessage":             "chat_message",
+    "LMStudioModel":           "lm_studio_model",
+    "lm-studio":               "lm_studio",
+    "kebab-case-name":         "kebab_case_name",
+    "mixed_Case-Value":        "mixed_case_value"
+  },
+  "pascal": {
+    "book_review":             "BookReview",
+    "XMLHttpRequest":          "XmlHttpRequest",
+    "already-pascal":          "AlreadyPascal",
+    "already_pascal":          "AlreadyPascal",
+    "chat_message":            "ChatMessage",
+    "LM_Studio_model":         "LmStudioModel"
+  },
+  "camel": {
+    "book_review":             "bookReview",
+    "BookReview":              "bookReview",
+    "lm_studio_model":         "lmStudioModel"
+  },
+  "table_name": {
+    "Book":                    "book",
+    "BookReview":              "book_review",
+    "ChatMessage":             "chat_message"
+  },
+  "component_name": {
+    "book":                    "Book",
+    "book_review":             "BookReview",
+    "chat_message":            "ChatMessage"
+  },
+  "message_name": [
+    {"component": "Book",          "verb": "Updated", "expected": "BookUpdated"},
+    {"component": "Book",          "verb": "Created", "expected": "BookCreated"},
+    {"component": "Book",          "verb": "Deleted", "expected": "BookDeleted"},
+    {"component": "book_review",   "verb": "Deleted", "expected": "BookReviewDeleted"},
+    {"component": "ChatMessage",   "verb": "Patched", "expected": "ChatMessagePatched"}
+  ],
+  "patch_name": {
+    "Book":                     "book.patch",
+    "BookReview":               "book_review.patch",
+    "chat_message":             "chat_message.patch"
+  },
+  "node_class": [
+    {"api": "lm-studio",     "op": "chatCompletions", "expected": "API_lm_studio_chatCompletions"},
+    {"api": "google-books",  "op": "getBookByIsbn",   "expected": "API_google_books_getBookByIsbn"}
+  ],
+  "node_display": [
+    {"api": "lm-studio",     "op": "chatCompletions", "expected": "API · lm-studio · chatCompletions"}
+  ]
+}

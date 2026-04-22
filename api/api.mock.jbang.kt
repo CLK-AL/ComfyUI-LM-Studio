@@ -36,6 +36,8 @@
 //DEPS com.github.ajalt.clikt:clikt-jvm:5.0.3
 //DEPS org.slf4j:slf4j-simple:2.0.13
 
+//SOURCES common/Naming.kt
+//SOURCES common/ComponentTables.kt
 //SOURCES openapi/Wiremock.kt
 //SOURCES asyncapi/AsyncApiServer.kt
 //SOURCES mcp/McpServer.kt
