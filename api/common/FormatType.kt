@@ -46,7 +46,49 @@ enum class JsonFormat(val value: String) {
     // ComfyUI domain media formats
     IMAGE("image"), LATENT("latent"), MASK("mask"),
     AUDIO("audio"), VIDEO("video"),
-    MODEL_REF("model-ref"), CONDITIONING("conditioning");
+    MODEL_REF("model-ref"), CONDITIONING("conditioning"),
+
+    // vCard 4.0 (RFC 6350)
+    VCARD_FN("vcard.fn"), VCARD_N("vcard.n"),
+    VCARD_NICKNAME("vcard.nickname"),
+    VCARD_BDAY("vcard.bday"), VCARD_ANNIVERSARY("vcard.anniversary"),
+    VCARD_GENDER("vcard.gender"),
+    VCARD_ADR("vcard.adr"),
+    VCARD_TEL("vcard.tel"), VCARD_EMAIL("vcard.email"),
+    VCARD_GEO("vcard.geo"), VCARD_TZ("vcard.tz"),
+    VCARD_TITLE("vcard.title"), VCARD_ROLE("vcard.role"),
+    VCARD_ORG("vcard.org"), VCARD_NOTE("vcard.note"),
+    VCARD_URL("vcard.url"), VCARD_UID("vcard.uid"),
+    VCARD_REV("vcard.rev"), VCARD_CATEGORIES("vcard.categories"),
+
+    // iCalendar (RFC 5545)
+    ICAL_DTSTART("ical.dtstart"), ICAL_DTEND("ical.dtend"),
+    ICAL_DTSTAMP("ical.dtstamp"), ICAL_DUE("ical.due"),
+    ICAL_COMPLETED("ical.completed"), ICAL_DURATION("ical.duration"),
+    ICAL_LOCATION("ical.location"), ICAL_DESCRIPTION("ical.description"),
+    ICAL_SUMMARY("ical.summary"), ICAL_COMMENT("ical.comment"),
+    ICAL_STATUS("ical.status"), ICAL_CLASS("ical.class"),
+    ICAL_TRANSP("ical.transp"), ICAL_PRIORITY("ical.priority"),
+    ICAL_SEQUENCE("ical.sequence"), ICAL_GEO("ical.geo"),
+    ICAL_RRULE("ical.rrule"), ICAL_RDATE("ical.rdate"),
+    ICAL_EXDATE("ical.exdate"),
+    ICAL_ATTENDEE("ical.attendee"), ICAL_ORGANIZER("ical.organizer"),
+    ICAL_CATEGORIES("ical.categories"),
+    ICAL_UID("ical.uid"), ICAL_TZID("ical.tzid"),
+    ICAL_METHOD("ical.method"), ICAL_CALSCALE("ical.calscale"),
+    ICAL_RELATED_TO("ical.related-to"),
+    ICAL_RECUR_ID("ical.recurrence-id"),
+
+    // Delimited cell formats (POI XLSX / CSV / TSV / vCard / iCal)
+    SEMI_DELIMITED("semi-delimited"),
+    CSV("csv"),
+    TSV("tsv"),
+    // Compound-date parts
+    MONTH_OF_YEAR("month-of-year"),
+    DAY_OF_WEEK("day-of-week"),
+    DAY_OF_YEAR("day-of-year"),
+    ISO_WEEK_NUM("iso-week-num"),
+    OFFSET("offset");
     companion object {
         fun fromValue(v: String?): JsonFormat =
             if (v.isNullOrEmpty()) NONE
@@ -132,6 +174,54 @@ enum class ComfyOption(val key: String) {
 /** Value of the `display` widget option for INT / FLOAT widgets. */
 enum class ComfyDisplay(val value: String) {
     NUMBER("number"), SLIDER("slider"), KNOB("knob"), COLOR("color");
+}
+
+// ----- RFC vocabulary enums (iCal + vCard full coverage) ----------------
+enum class IcalComponent(val value: String) {
+    VCALENDAR("VCALENDAR"),
+    VEVENT("VEVENT"), VTODO("VTODO"), VJOURNAL("VJOURNAL"),
+    VFREEBUSY("VFREEBUSY"), VTIMEZONE("VTIMEZONE"),
+    VALARM("VALARM"),
+    STANDARD("STANDARD"), DAYLIGHT("DAYLIGHT");
+}
+
+enum class IcalStatus(val value: String) {
+    TENTATIVE("TENTATIVE"), CONFIRMED("CONFIRMED"), CANCELLED("CANCELLED"),
+    NEEDS_ACTION("NEEDS-ACTION"), IN_PROCESS("IN-PROCESS"),
+    COMPLETED("COMPLETED"), DRAFT("DRAFT"), FINAL("FINAL");
+}
+
+enum class IcalMethod(val value: String) {
+    PUBLISH("PUBLISH"), REQUEST("REQUEST"), REPLY("REPLY"),
+    ADD("ADD"), CANCEL("CANCEL"), REFRESH("REFRESH"),
+    COUNTER("COUNTER"), DECLINE_COUNTER("DECLINECOUNTER");
+}
+
+enum class IcalClass(val value: String) {
+    PUBLIC("PUBLIC"), PRIVATE("PRIVATE"), CONFIDENTIAL("CONFIDENTIAL");
+}
+
+enum class IcalTransp(val value: String) {
+    OPAQUE("OPAQUE"), TRANSPARENT("TRANSPARENT");
+}
+
+enum class IcalAction(val value: String) {
+    AUDIO("AUDIO"), DISPLAY("DISPLAY"), EMAIL("EMAIL");
+}
+
+enum class VCardEmailType(val value: String) {
+    WORK("work"), HOME("home"), INTERNET("internet"), PREF("pref"), OTHER("other");
+}
+
+enum class VCardTelType(val value: String) {
+    VOICE("voice"), FAX("fax"), CELL("cell"),
+    HOME("home"), WORK("work"), TEXT("text"),
+    VIDEO("video"), PAGER("pager"), TEXTPHONE("textphone"),
+    CAR("car"), ISDN("isdn"), PCS("pcs");
+}
+
+enum class VCardGender(val value: String) {
+    MALE("M"), FEMALE("F"), OTHER("O"), NONE_("N"), UNKNOWN("U");
 }
 
 data class FormatMapping(

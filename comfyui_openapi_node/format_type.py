@@ -19,7 +19,8 @@ ComfyUI's frontend recognises.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from enum import Enum, Flag, auto
 
 from .sql_types import SqlTypes
@@ -52,12 +53,17 @@ class JsonFormat(str, Enum):
     WEEK         = "week"
     YEAR         = "year"
     QUARTER      = "quarter"
+    MONTH_OF_YEAR= "month-of-year"  # 1..12
     DAY          = "day"          # day-of-month (1..31)
+    DAY_OF_WEEK  = "day-of-week"  # 1..7 (ISO Mon=1)
+    DAY_OF_YEAR  = "day-of-year"  # 1..366
+    ISO_WEEK_NUM = "iso-week-num" # 1..53
     HOUR         = "hour"         # 0..23
     MINUTE       = "minute"       # 0..59
     SECOND       = "second"       # 0..59
     MILLISECOND  = "millisecond"  # 0..999
     TIMEZONE     = "timezone"     # IANA tz name, e.g. "Europe/London"
+    OFFSET       = "offset"       # ±HH:MM or Z
     DURATION     = "duration"
     IPV4         = "ipv4"
     IPV6         = "ipv6"
@@ -84,6 +90,60 @@ class JsonFormat(str, Enum):
     VIDEO        = "video"
     MODEL_REF    = "model-ref"
     CONDITIONING = "conditioning"
+    # vCard 4.0 (RFC 6350)
+    VCARD_FN        = "vcard.fn"
+    VCARD_N         = "vcard.n"
+    VCARD_NICKNAME  = "vcard.nickname"
+    VCARD_BDAY      = "vcard.bday"
+    VCARD_ANNIVERSARY = "vcard.anniversary"
+    VCARD_GENDER    = "vcard.gender"
+    VCARD_ADR       = "vcard.adr"
+    VCARD_TEL       = "vcard.tel"
+    VCARD_EMAIL     = "vcard.email"
+    VCARD_GEO       = "vcard.geo"
+    VCARD_TZ        = "vcard.tz"
+    VCARD_TITLE     = "vcard.title"
+    VCARD_ROLE      = "vcard.role"
+    VCARD_ORG       = "vcard.org"
+    VCARD_NOTE      = "vcard.note"
+    VCARD_URL       = "vcard.url"
+    VCARD_UID       = "vcard.uid"
+    VCARD_REV       = "vcard.rev"
+    VCARD_CATEGORIES= "vcard.categories"
+    # iCalendar (RFC 5545)
+    ICAL_DTSTART    = "ical.dtstart"
+    ICAL_DTEND      = "ical.dtend"
+    ICAL_DTSTAMP    = "ical.dtstamp"
+    ICAL_DUE        = "ical.due"
+    ICAL_COMPLETED  = "ical.completed"
+    ICAL_DURATION   = "ical.duration"
+    ICAL_LOCATION   = "ical.location"
+    ICAL_DESCRIPTION= "ical.description"
+    ICAL_SUMMARY    = "ical.summary"
+    ICAL_COMMENT    = "ical.comment"
+    ICAL_STATUS     = "ical.status"
+    ICAL_CLASS      = "ical.class"
+    ICAL_TRANSP     = "ical.transp"
+    ICAL_PRIORITY   = "ical.priority"
+    ICAL_SEQUENCE   = "ical.sequence"
+    ICAL_GEO        = "ical.geo"
+    ICAL_RRULE      = "ical.rrule"
+    ICAL_RDATE      = "ical.rdate"
+    ICAL_EXDATE     = "ical.exdate"
+    ICAL_ATTENDEE   = "ical.attendee"
+    ICAL_ORGANIZER  = "ical.organizer"
+    ICAL_CATEGORIES = "ical.categories"
+    ICAL_UID        = "ical.uid"
+    ICAL_TZID       = "ical.tzid"
+    ICAL_METHOD     = "ical.method"
+    ICAL_CALSCALE   = "ical.calscale"
+    ICAL_RELATED_TO = "ical.related-to"
+    ICAL_RECUR_ID   = "ical.recurrence-id"
+    # Delimited cell formats (POI XLSX / TSV / CSV complex columns).
+    # `;` is the same array delimiter vCard N / ADR use.
+    SEMI_DELIMITED  = "semi-delimited"
+    CSV             = "csv"
+    TSV             = "tsv"
 
 
 class HtmlInputType(str, Enum):
@@ -207,7 +267,118 @@ class ComfyDisplay(str, Enum):
     COLOR   = "color"
 
 
+# ---- RFC vocabulary enums (full coverage) ------------------------------
+class IcalComponent(str, Enum):
+    """iCalendar (RFC 5545) components — `BEGIN:<name>` / `END:<name>`."""
+    VCALENDAR = "VCALENDAR"
+    VEVENT    = "VEVENT"
+    VTODO     = "VTODO"
+    VJOURNAL  = "VJOURNAL"
+    VFREEBUSY = "VFREEBUSY"
+    VTIMEZONE = "VTIMEZONE"
+    VALARM    = "VALARM"
+    STANDARD  = "STANDARD"    # VTIMEZONE sub-component
+    DAYLIGHT  = "DAYLIGHT"    # VTIMEZONE sub-component
+
+
+class IcalStatus(str, Enum):
+    """Values of the iCal STATUS property. Context-dependent:
+    VEVENT → TENTATIVE/CONFIRMED/CANCELLED;
+    VTODO  → NEEDS-ACTION/IN-PROCESS/COMPLETED/CANCELLED;
+    VJOURNAL → DRAFT/FINAL/CANCELLED."""
+    TENTATIVE    = "TENTATIVE"
+    CONFIRMED    = "CONFIRMED"
+    CANCELLED    = "CANCELLED"
+    NEEDS_ACTION = "NEEDS-ACTION"
+    IN_PROCESS   = "IN-PROCESS"
+    COMPLETED    = "COMPLETED"
+    DRAFT        = "DRAFT"
+    FINAL        = "FINAL"
+
+
+class IcalMethod(str, Enum):
+    PUBLISH         = "PUBLISH"
+    REQUEST         = "REQUEST"
+    REPLY           = "REPLY"
+    ADD             = "ADD"
+    CANCEL          = "CANCEL"
+    REFRESH         = "REFRESH"
+    COUNTER         = "COUNTER"
+    DECLINE_COUNTER = "DECLINECOUNTER"
+
+
+class IcalClass(str, Enum):
+    PUBLIC       = "PUBLIC"
+    PRIVATE      = "PRIVATE"
+    CONFIDENTIAL = "CONFIDENTIAL"
+
+
+class IcalTransp(str, Enum):
+    OPAQUE      = "OPAQUE"
+    TRANSPARENT = "TRANSPARENT"
+
+
+class IcalAction(str, Enum):
+    """VALARM ACTION property."""
+    AUDIO   = "AUDIO"
+    DISPLAY = "DISPLAY"
+    EMAIL   = "EMAIL"
+
+
+class VCardEmailType(str, Enum):
+    """vCard 4.0 EMAIL `TYPE=` parameter values."""
+    WORK     = "work"
+    HOME     = "home"
+    INTERNET = "internet"     # retained from 3.0
+    PREF     = "pref"
+    OTHER    = "other"
+
+
+class VCardTelType(str, Enum):
+    """vCard 4.0 TEL `TYPE=` parameter values."""
+    VOICE     = "voice"
+    FAX       = "fax"
+    CELL      = "cell"
+    HOME      = "home"
+    WORK      = "work"
+    TEXT      = "text"
+    VIDEO     = "video"
+    PAGER     = "pager"
+    TEXTPHONE = "textphone"
+    CAR       = "car"
+    ISDN      = "isdn"
+    PCS       = "pcs"
+
+
+class VCardGender(str, Enum):
+    """vCard 4.0 GENDER property first component."""
+    MALE      = "M"
+    FEMALE    = "F"
+    OTHER     = "O"
+    NONE_     = "N"
+    UNKNOWN   = "U"
+
+
 # ---- mapping + enum ----------------------------------------------------
+@dataclass(frozen=True)
+class FormatPattern:
+    """Named-group regex + matching template + per-group FormatType.
+
+    Lets a complex format (ISO date-time, ISO week, ISO duration, …)
+    decompose into its atomic parts. The regex is a Python `re`
+    pattern using `(?P<name>…)` groups; the template uses Python
+    `str.format` `{name}` placeholders. Each name maps to the atomic
+    `FormatType` representing that part — picked up by UIs to render
+    sub-widgets, by validators to range-check each field, by the
+    Kotlin/JS sides via the same shared regex string.
+    """
+    regex:    str
+    template: str
+    parts:    dict[str, str] = field(default_factory=dict)
+    # `parts` keys are the named groups; values are FormatType.name
+    # strings (avoids forward-reference at decoration time).
+
+
 @dataclass(frozen=True)
 class FormatMapping:
     json_type:   JsonType
@@ -218,6 +389,7 @@ class FormatMapping:
     html_input:  HtmlInputType
     comfy:       ComfyType
     placeholder: str = ""
+    pattern:     FormatPattern | None = None
 
 
 T  = JsonType
@@ -275,11 +447,16 @@ class FormatType(Enum):
     # SMALLINT column.
     YEAR          = FormatMapping(T.INTEGER, F.YEAR,         S.INTEGER,     "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "YYYY")
     QUARTER       = FormatMapping(T.INTEGER, F.QUARTER,      S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..4")
+    MONTH_OF_YEAR = FormatMapping(T.INTEGER, F.MONTH_OF_YEAR,S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..12")
     DAY           = FormatMapping(T.INTEGER, F.DAY,          S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..31")
+    DAY_OF_WEEK   = FormatMapping(T.INTEGER, F.DAY_OF_WEEK,  S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..7")
+    DAY_OF_YEAR   = FormatMapping(T.INTEGER, F.DAY_OF_YEAR,  S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..366")
+    ISO_WEEK_NUM  = FormatMapping(T.INTEGER, F.ISO_WEEK_NUM, S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..53")
     HOUR          = FormatMapping(T.INTEGER, F.HOUR,         S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..23")
     MINUTE        = FormatMapping(T.INTEGER, F.MINUTE,       S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..59")
     SECOND        = FormatMapping(T.INTEGER, F.SECOND,       S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..59")
     MILLISECOND   = FormatMapping(T.INTEGER, F.MILLISECOND,  S.INTEGER,     "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..999")
+    OFFSET        = FormatMapping(T.STRING,  F.OFFSET,       S.VARCHAR,     "kotlin.String",                         C.TEXT_FIELD,          H.TEXT,           Y.STRING, "+00:00")
     # Boolean rendering variants
     BOOL          = FormatMapping(T.BOOLEAN, F.NONE,         S.BOOLEAN,     "kotlin.Boolean",                        C.SWITCH,              H.CHECKBOX,       Y.BOOLEAN)
     CHECKBOX      = FormatMapping(T.BOOLEAN, F.NONE,         S.BOOLEAN,     "kotlin.Boolean",                        C.CHECKBOX,            H.CHECKBOX,       Y.BOOLEAN)
@@ -305,6 +482,64 @@ class FormatType(Enum):
     AUDIO              = FormatMapping(T.STRING, F.AUDIO,        S.VARCHAR,   "kotlin.String", C.AUDIO_PLAYER,      H.FILE,   Y.AUDIO)
     VIDEO              = FormatMapping(T.STRING, F.VIDEO,        S.VARCHAR,   "kotlin.String", C.VIDEO_PLAYER,      H.FILE,   Y.VIDEO)
     WEBCAM             = FormatMapping(T.STRING, F.IMAGE,        S.VARCHAR,   "kotlin.String", C.WEBCAM_CAPTURE,    H.HIDDEN, Y.WEBCAM)
+
+    # vCard 4.0 (RFC 6350) — text-typed properties extending string.
+    VCARD_FN           = FormatMapping(T.STRING, F.VCARD_FN,        S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "Ada Lovelace")
+    VCARD_N            = FormatMapping(T.STRING, F.VCARD_N,         S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "Lovelace;Ada;Augusta;Hon.;")
+    VCARD_NICKNAME     = FormatMapping(T.STRING, F.VCARD_NICKNAME,  S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING)
+    VCARD_BDAY         = FormatMapping(T.STRING, F.VCARD_BDAY,      S.DATE,        "kotlinx.datetime.LocalDate", C.DATE_PICKER, H.DATE,        Y.STRING, "YYYY-MM-DD")
+    VCARD_ANNIVERSARY  = FormatMapping(T.STRING, F.VCARD_ANNIVERSARY,S.DATE,       "kotlinx.datetime.LocalDate", C.DATE_PICKER, H.DATE,        Y.STRING, "YYYY-MM-DD")
+    VCARD_GENDER       = FormatMapping(T.STRING, F.VCARD_GENDER,    S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "M / F / O / N / U")
+    VCARD_ADR          = FormatMapping(T.STRING, F.VCARD_ADR,       S.VARCHAR,     "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, ";;Street;City;Region;ZIP;Country")
+    VCARD_TEL          = FormatMapping(T.STRING, F.VCARD_TEL,       S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEL,            Y.STRING, "+1 555 0100")
+    VCARD_EMAIL        = FormatMapping(T.STRING, F.VCARD_EMAIL,     S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.EMAIL,          Y.STRING, "user@example.com")
+    VCARD_GEO          = FormatMapping(T.STRING, F.VCARD_GEO,       S.VARCHAR,     "kotlin.String", C.MAP_PICKER,          H.TEXT,           Y.STRING, "geo:51.5074,-0.1278")
+    VCARD_TZ           = FormatMapping(T.STRING, F.VCARD_TZ,        S.VARCHAR,     "kotlinx.datetime.TimeZone", C.DROPDOWN_MENU, H.SELECT,    Y.COMBO,  "Europe/London")
+    VCARD_TITLE        = FormatMapping(T.STRING, F.VCARD_TITLE,     S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING)
+    VCARD_ROLE         = FormatMapping(T.STRING, F.VCARD_ROLE,      S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING)
+    VCARD_ORG          = FormatMapping(T.STRING, F.VCARD_ORG,       S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING)
+    VCARD_NOTE         = FormatMapping(T.STRING, F.VCARD_NOTE,      S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING)
+    VCARD_URL          = FormatMapping(T.STRING, F.VCARD_URL,       S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.URL,            Y.STRING, "https://…")
+    VCARD_UID          = FormatMapping(T.STRING, F.VCARD_UID,       S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "urn:uuid:…")
+    VCARD_REV          = FormatMapping(T.STRING, F.VCARD_REV,       S.TIMESTAMP,   "kotlinx.datetime.Instant", C.DATETIME_PICKER, H.DATETIME_LOCAL, Y.STRING)
+    VCARD_CATEGORIES   = FormatMapping(T.STRING, F.VCARD_CATEGORIES,S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "tag1,tag2,tag3")
+
+    # iCalendar (RFC 5545)
+    ICAL_DTSTART       = FormatMapping(T.STRING, F.ICAL_DTSTART,    S.TIMESTAMP,   "kotlinx.datetime.Instant", C.DATETIME_PICKER, H.DATETIME_LOCAL, Y.STRING, "YYYYMMDDTHHMMSSZ")
+    ICAL_DTEND         = FormatMapping(T.STRING, F.ICAL_DTEND,      S.TIMESTAMP,   "kotlinx.datetime.Instant", C.DATETIME_PICKER, H.DATETIME_LOCAL, Y.STRING)
+    ICAL_DTSTAMP       = FormatMapping(T.STRING, F.ICAL_DTSTAMP,    S.TIMESTAMP,   "kotlinx.datetime.Instant", C.DATETIME_PICKER, H.DATETIME_LOCAL, Y.STRING)
+    ICAL_DUE           = FormatMapping(T.STRING, F.ICAL_DUE,        S.TIMESTAMP,   "kotlinx.datetime.Instant", C.DATETIME_PICKER, H.DATETIME_LOCAL, Y.STRING)
+    ICAL_COMPLETED     = FormatMapping(T.STRING, F.ICAL_COMPLETED,  S.TIMESTAMP,   "kotlinx.datetime.Instant", C.DATETIME_PICKER, H.DATETIME_LOCAL, Y.STRING)
+    ICAL_DURATION      = FormatMapping(T.STRING, F.ICAL_DURATION,   S.VARCHAR,     "kotlin.time.Duration",     C.TEXT_FIELD,      H.TEXT,           Y.STRING, "P1DT2H")
+    ICAL_LOCATION      = FormatMapping(T.STRING, F.ICAL_LOCATION,   S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "1 Infinite Loop")
+    ICAL_DESCRIPTION   = FormatMapping(T.STRING, F.ICAL_DESCRIPTION,S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING)
+    ICAL_SUMMARY       = FormatMapping(T.STRING, F.ICAL_SUMMARY,    S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING)
+    ICAL_COMMENT       = FormatMapping(T.STRING, F.ICAL_COMMENT,    S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING)
+    ICAL_STATUS        = FormatMapping(T.STRING, F.ICAL_STATUS,     S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "TENTATIVE / CONFIRMED / CANCELLED / NEEDS-ACTION / COMPLETED / IN-PROCESS / DRAFT / FINAL")
+    ICAL_CLASS         = FormatMapping(T.STRING, F.ICAL_CLASS,      S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "PUBLIC / PRIVATE / CONFIDENTIAL")
+    ICAL_TRANSP        = FormatMapping(T.STRING, F.ICAL_TRANSP,     S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "OPAQUE / TRANSPARENT")
+    ICAL_PRIORITY      = FormatMapping(T.INTEGER,F.ICAL_PRIORITY,   S.SMALLINT,    "kotlin.Int",    C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..9")
+    ICAL_SEQUENCE      = FormatMapping(T.INTEGER,F.ICAL_SEQUENCE,   S.INTEGER,     "kotlin.Int",    C.NUMBER_FIELD,        H.NUMBER,         Y.INT)
+    ICAL_GEO           = FormatMapping(T.STRING, F.ICAL_GEO,        S.VARCHAR,     "kotlin.String", C.MAP_PICKER,          H.TEXT,           Y.STRING, "51.5074;-0.1278")
+    ICAL_RRULE         = FormatMapping(T.STRING, F.ICAL_RRULE,      S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, "FREQ=WEEKLY;BYDAY=MO,WE,FR")
+    ICAL_RDATE         = FormatMapping(T.STRING, F.ICAL_RDATE,      S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING)
+    ICAL_EXDATE        = FormatMapping(T.STRING, F.ICAL_EXDATE,     S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING)
+    ICAL_ATTENDEE      = FormatMapping(T.STRING, F.ICAL_ATTENDEE,   S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.EMAIL,          Y.STRING, "mailto:user@example.com")
+    ICAL_ORGANIZER     = FormatMapping(T.STRING, F.ICAL_ORGANIZER,  S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.EMAIL,          Y.STRING, "mailto:org@example.com")
+    ICAL_CATEGORIES    = FormatMapping(T.STRING, F.ICAL_CATEGORIES, S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "tag1,tag2")
+    ICAL_UID           = FormatMapping(T.STRING, F.ICAL_UID,        S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "uid@example.com")
+    ICAL_TZID          = FormatMapping(T.STRING, F.ICAL_TZID,       S.VARCHAR,     "kotlinx.datetime.TimeZone", C.DROPDOWN_MENU, H.SELECT,    Y.COMBO,  "Europe/London")
+    ICAL_METHOD        = FormatMapping(T.STRING, F.ICAL_METHOD,     S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "PUBLISH / REQUEST / REPLY / ADD / CANCEL / REFRESH / COUNTER / DECLINECOUNTER")
+    ICAL_CALSCALE      = FormatMapping(T.STRING, F.ICAL_CALSCALE,   S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "GREGORIAN")
+    ICAL_RELATED_TO    = FormatMapping(T.STRING, F.ICAL_RELATED_TO, S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING)
+    ICAL_RECUR_ID      = FormatMapping(T.STRING, F.ICAL_RECUR_ID,   S.TIMESTAMP,   "kotlinx.datetime.Instant", C.DATETIME_PICKER, H.DATETIME_LOCAL, Y.STRING)
+
+    # Delimited-row cell formats for tabular (POI XLSX / CSV / TSV /
+    # vCard / iCal) use. Stored as TEXT; the array layout is a
+    # FormatPattern concern (see PATTERNS below).
+    SEMI_DELIMITED     = FormatMapping(T.STRING, F.SEMI_DELIMITED, S.LONGVARCHAR, "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "a;b;c")
+    CSV_ROW            = FormatMapping(T.STRING, F.CSV,            S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, "a,b,c")
+    TSV_ROW            = FormatMapping(T.STRING, F.TSV,            S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, "a\\tb\\tc")
 
 
 # ---- dispatch helpers --------------------------------------------------
@@ -360,3 +595,182 @@ def _from_sql(sql_type) -> "FormatType":
 
 FormatType.from_json_schema = staticmethod(_from_json_schema)   # type: ignore[attr-defined]
 FormatType.from_sql         = staticmethod(_from_sql)           # type: ignore[attr-defined]
+
+
+# ---- Canonical FormatPatterns for compound formats --------------------
+# Defined here (not on the enum value) so they can reference other
+# FormatType members without forward-ref gymnastics. The patterns dict
+# below is consulted by `FormatType.pattern()` and the parse / render
+# helpers.
+PATTERNS: dict["FormatType", FormatPattern] = {
+    FormatType.DATE: FormatPattern(
+        regex    = r"^(?P<year>\d{4})-(?P<month_of_year>\d{2})-(?P<day>\d{2})$",
+        template = "{year:04d}-{month_of_year:02d}-{day:02d}",
+        parts    = {"year": "YEAR", "month_of_year": "MONTH_OF_YEAR", "day": "DAY"},
+    ),
+    FormatType.TIME: FormatPattern(
+        regex    = r"^(?P<hour>\d{2}):(?P<minute>\d{2})(?::(?P<second>\d{2})(?:\.(?P<millisecond>\d{1,3}))?)?$",
+        template = "{hour:02d}:{minute:02d}:{second:02d}",
+        parts    = {"hour": "HOUR", "minute": "MINUTE",
+                    "second": "SECOND", "millisecond": "MILLISECOND"},
+    ),
+    FormatType.DATETIME: FormatPattern(
+        regex    = (r"^(?P<year>\d{4})-(?P<month_of_year>\d{2})-(?P<day>\d{2})"
+                    r"T(?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})"
+                    r"(?:\.(?P<millisecond>\d{1,3}))?"
+                    r"(?P<offset>Z|[+-]\d{2}:?\d{2})?$"),
+        template = "{year:04d}-{month_of_year:02d}-{day:02d}T{hour:02d}:{minute:02d}:{second:02d}{offset}",
+        parts    = {"year": "YEAR", "month_of_year": "MONTH_OF_YEAR", "day": "DAY",
+                    "hour": "HOUR", "minute": "MINUTE", "second": "SECOND",
+                    "millisecond": "MILLISECOND", "offset": "OFFSET"},
+    ),
+    FormatType.MONTH: FormatPattern(
+        regex    = r"^(?P<year>\d{4})-(?P<month_of_year>\d{2})$",
+        template = "{year:04d}-{month_of_year:02d}",
+        parts    = {"year": "YEAR", "month_of_year": "MONTH_OF_YEAR"},
+    ),
+    FormatType.WEEK: FormatPattern(
+        regex    = r"^(?P<year>\d{4})-W(?P<iso_week_num>\d{2})$",
+        template = "{year:04d}-W{iso_week_num:02d}",
+        parts    = {"year": "YEAR", "iso_week_num": "ISO_WEEK_NUM"},
+    ),
+    FormatType.DURATION: FormatPattern(
+        # ISO 8601 duration — abbreviated (years / months / days / time)
+        regex    = (r"^P(?:(?P<year>\d+)Y)?(?:(?P<month_of_year>\d+)M)?(?:(?P<day>\d+)D)?"
+                    r"(?:T(?:(?P<hour>\d+)H)?(?:(?P<minute>\d+)M)?(?:(?P<second>\d+)S)?)?$"),
+        template = "P{year}Y{month_of_year}M{day}DT{hour}H{minute}M{second}S",
+        parts    = {"year": "YEAR", "month_of_year": "MONTH_OF_YEAR", "day": "DAY",
+                    "hour": "HOUR", "minute": "MINUTE", "second": "SECOND"},
+    ),
+    FormatType.OFFSET: FormatPattern(
+        regex    = r"^(?:Z|(?P<sign>[+-])(?P<hour>\d{2}):?(?P<minute>\d{2}))$",
+        template = "{sign}{hour:02d}:{minute:02d}",
+        parts    = {"sign": "TEXT", "hour": "HOUR", "minute": "MINUTE"},
+    ),
+
+    # --- vCard 4.0 (RFC 6350) structured properties ---------------------
+    # N: family;given;additional;prefixes;suffixes
+    FormatType.VCARD_N: FormatPattern(
+        regex    = r"^(?P<family>[^;]*);(?P<given>[^;]*);(?P<additional>[^;]*);(?P<prefixes>[^;]*);(?P<suffixes>[^;]*)$",
+        template = "{family};{given};{additional};{prefixes};{suffixes}",
+        parts    = {"family": "TEXT", "given": "TEXT",
+                    "additional": "TEXT", "prefixes": "TEXT",
+                    "suffixes": "TEXT"},
+    ),
+    # ADR: po_box;extended;street;locality;region;postal_code;country
+    FormatType.VCARD_ADR: FormatPattern(
+        regex    = (r"^(?P<po_box>[^;]*);(?P<extended>[^;]*);(?P<street>[^;]*);"
+                    r"(?P<locality>[^;]*);(?P<region>[^;]*);"
+                    r"(?P<postal_code>[^;]*);(?P<country>[^;]*)$"),
+        template = "{po_box};{extended};{street};{locality};{region};{postal_code};{country}",
+        parts    = {"po_box": "TEXT", "extended": "TEXT", "street": "TEXT",
+                    "locality": "TEXT", "region": "TEXT",
+                    "postal_code": "TEXT", "country": "TEXT"},
+    ),
+    # GEO: geo:lat,lon (vCard URI form) — latitude,longitude
+    FormatType.VCARD_GEO: FormatPattern(
+        regex    = r"^(?:geo:)?(?P<latitude>-?\d+(?:\.\d+)?),(?P<longitude>-?\d+(?:\.\d+)?)$",
+        template = "geo:{latitude},{longitude}",
+        parts    = {"latitude": "DOUBLE", "longitude": "DOUBLE"},
+    ),
+
+    # --- iCalendar (RFC 5545) structured properties ---------------------
+    # GEO: lat;lon (iCal list form — semicolon separated)
+    FormatType.ICAL_GEO: FormatPattern(
+        regex    = r"^(?P<latitude>-?\d+(?:\.\d+)?);(?P<longitude>-?\d+(?:\.\d+)?)$",
+        template = "{latitude};{longitude}",
+        parts    = {"latitude": "DOUBLE", "longitude": "DOUBLE"},
+    ),
+    # ATTENDEE / ORGANIZER: CAL-ADDRESS = mailto:email
+    FormatType.ICAL_ATTENDEE: FormatPattern(
+        regex    = r"^mailto:(?P<email>[^@\s]+@[^@\s]+\.[^@\s]+)$",
+        template = "mailto:{email}",
+        parts    = {"email": "EMAIL"},
+    ),
+    FormatType.ICAL_ORGANIZER: FormatPattern(
+        regex    = r"^mailto:(?P<email>[^@\s]+@[^@\s]+\.[^@\s]+)$",
+        template = "mailto:{email}",
+        parts    = {"email": "EMAIL"},
+    ),
+    # RRULE: FREQ=WEEKLY;COUNT=10;BYDAY=MO,WE,FR — we capture the
+    # most common top-level fields. Unknown keys survive untouched
+    # because the regex is anchored only on the known prefixes.
+    # Delimited cell formats — the "pattern" here doesn't carry named
+    # groups because the arity is variable; callers split on the
+    # delimiter and use `parts["item"]` as the atomic type for every
+    # cell. `template` shows the rendering convention.
+    FormatType.SEMI_DELIMITED: FormatPattern(
+        regex    = r"^(?:[^;]*)(?:;[^;]*)*$",
+        template = "{items_joined_with_semicolon}",
+        parts    = {"item": "TEXT"},
+    ),
+    FormatType.CSV_ROW: FormatPattern(
+        regex    = r"^(?:[^,\n]*)(?:,[^,\n]*)*$",
+        template = "{items_joined_with_comma}",
+        parts    = {"item": "TEXT"},
+    ),
+    FormatType.TSV_ROW: FormatPattern(
+        regex    = r"^(?:[^\t\n]*)(?:\t[^\t\n]*)*$",
+        template = "{items_joined_with_tab}",
+        parts    = {"item": "TEXT"},
+    ),
+    FormatType.ICAL_RRULE: FormatPattern(
+        regex    = (r"^FREQ=(?P<freq>SECONDLY|MINUTELY|HOURLY|DAILY|WEEKLY|MONTHLY|YEARLY)"
+                    r"(?:;INTERVAL=(?P<interval>\d+))?"
+                    r"(?:;COUNT=(?P<count>\d+))?"
+                    r"(?:;UNTIL=(?P<until>[0-9TZ:+\-]+))?"
+                    r"(?:;BYDAY=(?P<byday>[A-Z,0-9+\-]+))?"
+                    r"(?:;BYMONTH=(?P<bymonth>[0-9,]+))?"
+                    r"(?:;BYMONTHDAY=(?P<bymonthday>[0-9,+\-]+))?"
+                    r"(?:;WKST=(?P<wkst>[A-Z]{2}))?"
+                    r"$"),
+        template = "FREQ={freq}",
+        parts    = {"freq": "TEXT", "interval": "INT32", "count": "INT32",
+                    "until": "DATETIME", "byday": "TEXT", "bymonth": "TEXT",
+                    "bymonthday": "TEXT", "wkst": "TEXT"},
+    ),
+}
+
+
+def _pattern_for(self: "FormatType") -> FormatPattern | None:
+    """Return the FormatPattern attached to this FormatType, if any."""
+    return PATTERNS.get(self)
+
+
+def _parse(self: "FormatType", text: str) -> dict[str, str] | None:
+    """Match `text` against the pattern; return the named-group dict
+    or None if it doesn't match. Group values are the raw strings
+    (not yet typed) — pair with `parts` to know what each is."""
+    p = PATTERNS.get(self)
+    if p is None:
+        return None
+    m = re.match(p.regex, text or "")
+    if m is None:
+        return None
+    return {k: (v if v is not None else "") for k, v in m.groupdict().items()}
+
+
+def _render(self: "FormatType", parts: dict[str, object]) -> str:
+    """Fill the template with `parts`. Missing optional groups become
+    empty strings; integer-typed groups go through the template's
+    standard `:02d` / `:04d` formatters."""
+    p = PATTERNS.get(self)
+    if p is None:
+        raise ValueError(f"{self.name!r} has no FormatPattern")
+    safe: dict[str, object] = {}
+    # Preserve every named placeholder; supply "" for missing.
+    for name in re.findall(r"\{([A-Za-z_][A-Za-z0-9_]*)", p.template):
+        v = parts.get(name, "")
+        if isinstance(v, str) and v == "" and "{" + name + ":" in p.template:
+            # Numeric placeholder + missing value → 0 keeps the
+            # template valid (caller can omit optional fields).
+            safe[name] = 0
+        else:
+            safe[name] = v
+    return p.template.format(**safe)
+
+
+# Bind helpers as static methods on the enum.
+FormatType.pattern = _pattern_for     # type: ignore[attr-defined]
+FormatType.parse   = _parse           # type: ignore[attr-defined]
+FormatType.render  = _render          # type: ignore[attr-defined]
