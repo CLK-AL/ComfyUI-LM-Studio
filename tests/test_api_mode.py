@@ -2,7 +2,7 @@
 
 Run:
     sdk env                              # .sdkmanrc pins java/kotlin
-    jbang tests/wiremock-lms.kt start    # embedded WireMock, no Docker
+    jbang tests/lm-studio.wiremock.jbang.kt start    # embedded WireMock, no Docker
     pytest tests/ -q
 
 These tests force the API path by passing use_sdk=False.

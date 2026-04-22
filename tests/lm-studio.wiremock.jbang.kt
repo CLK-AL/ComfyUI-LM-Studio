@@ -3,7 +3,7 @@
 //JAVA 25
 //RUNTIME_OPTIONS -Xmx256m
 //DEPS org.wiremock:wiremock:3.9.1
-//DEPS com.github.ajalt.clikt:clikt:4.4.0
+//DEPS com.github.ajalt.clikt:clikt-jvm:5.0.3
 //DEPS io.swagger.parser.v3:swagger-parser:2.1.22
 //DEPS org.slf4j:slf4j-simple:2.0.13
 //NATIVE_OPTIONS --no-fallback
@@ -13,14 +13,16 @@
 
 // Embedded WireMock seeded from the LM Studio official OpenAPI document.
 // No Docker required. Runs on GraalVM 25 via jbang; can be compiled to a
-// native image with:  jbang --native tests/wiremock-lms.kt
+// native image with:  jbang --native tests/lm-studio.wiremock.jbang.kt
 //
 // Usage:
-//   jbang tests/wiremock-lms.kt start                       # default spec URL
-//   jbang tests/wiremock-lms.kt start --spec lms.yaml       # local file
-//   jbang tests/wiremock-lms.kt start --port 8089 --host 127.0.0.1
+//   jbang tests/lm-studio.wiremock.jbang.kt start
+//   jbang tests/lm-studio.wiremock.jbang.kt start --spec tests/lms-openapi.yaml
+//   jbang tests/lm-studio.wiremock.jbang.kt start --port 8089 --host 127.0.0.1
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.flag
@@ -41,10 +43,10 @@ class Root : CliktCommand(name = "wiremock-lms") {
     override fun run() = Unit
 }
 
-class Start : CliktCommand(
-    name = "start",
-    help = "Start embedded WireMock seeded from the LM Studio OpenAPI."
-) {
+class Start : CliktCommand(name = "start") {
+    override fun help(context: Context) =
+        "Start embedded WireMock seeded from the LM Studio OpenAPI."
+
     private val port by option("-p", "--port").int().default(8089)
     private val host by option("--host").default("127.0.0.1")
     private val spec by option(
