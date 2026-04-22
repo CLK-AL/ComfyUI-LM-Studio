@@ -1,10 +1,15 @@
-# Test Plan — ComfyUI-LM-Studio (API mode, WireMock)
+# Unit Test Plan — ComfyUI-LM-Studio (LMStudioNode + LM Studio WireMock facade)
+
+A ComfyUI node is itself the unit under test: inputs come from the graph,
+outputs are `(response, stats)`. These unit tests drive `LMStudioNode`
+through its public `get_response(...)` with the LM Studio server replaced
+by the jbang-embedded WireMock facade.
 
 ## Scope
 
 Covers `LMStudioNode._get_response_api` in `node.py`. The SDK path
-(`_get_response_sdk`) is out of scope for WireMock since it bypasses HTTP;
-cover it separately with `unittest.mock` against the `lmstudio` module.
+(`_get_response_sdk`) is covered separately with `unittest.mock` against
+the `lmstudio` module since it bypasses HTTP.
 
 ## Tooling
 
