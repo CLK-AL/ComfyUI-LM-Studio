@@ -130,6 +130,30 @@ JSON Schema into a ComfyUI node spec — `INPUT_TYPES`, `RETURN_TYPES`,
 `RETURN_NAMES` — with typed slots (`STRING` / `INT` / `FLOAT` /
 `BOOLEAN` / enum dropdowns). LM Studio is the first bundled preset.
 
+### The full picture — no real DB, no real server
+
+Individual API files (`.yaml` / `.json` / `.proto` / `.graphql` / `.sq`)
+stay as independent contracts. **SQLite JSON1 is the unified logic**:
+
+- **`SchemaRegistry`** — thin index over on-disk `*.schema.json` files;
+  answers "which APIs have an `isbn` property?" via `json_extract` in
+  one query. `resolve_ref()` handles both JSON Pointers and
+  `registry://<kind>/<api>/<category>/<name>` URIs; `unified_component()`
+  folds similar components (Google Books / Amazon / Audible `Book`)
+  into one merged JSON Schema.
+- **`EntityStore`** — two JSON1-validated tables that simulate an app
+  holding N API projections of one JDBC entity. `store.project(type,
+  id, schema)` returns only the fields a given API cares about;
+  `store.patch(..., api=…)` applies RFC 7396 merge via SQL `json_patch()`,
+  with every property diff recorded in an append-only audit log and
+  streamable as **SSE frames** for realtime consumers.
+- **`api/api.mock.jbang.kt`** — one Kotlin process with nested Clikt
+  subcommands that mocks every protocol (HTTP / WebDAV / REST / HTTPS /
+  WSS / SSE / gRPC / MCP / JDBC) against the same registry + entity
+  store. No real API server, no real database.
+
+![unified architecture](./puml/api-comfyui-unified.png)
+
 ![concept](./puml/api-comfyui-concept.png)
 
 ![binding sequence](./puml/api-comfyui-binding.png)

@@ -1,0 +1,132 @@
+@startuml api-comfyui-unified
+!theme plain
+title "API ComfyUI" — full stack: schema → entity → every protocol,\nno real DB, no real server
+
+skinparam componentStyle rectangle
+skinparam defaultFontName Inconsolata
+skinparam linetype ortho
+skinparam rectangleBackgroundColor<<files>>    #fafaf5
+skinparam rectangleBackgroundColor<<python>>   #eaf3ff
+skinparam rectangleBackgroundColor<<sqlite>>   #eaffea
+skinparam rectangleBackgroundColor<<kotlin>>   #fef5e7
+skinparam rectangleBackgroundColor<<canvas>>   #f8e8ff
+skinparam rectangleBackgroundColor<<absent>>   #ffeaea
+
+actor "ComfyUI user" as U
+
+'-------------------------------------------------------------------
+'  Individual APIs — one file per upstream, no cross-talk.
+'-------------------------------------------------------------------
+rectangle "**Individual API files**\n(one per upstream)" <<files>> as FILES {
+  component ".yaml   — OpenAPI"  as F_OAS
+  component ".yaml   — AsyncAPI" as F_AAS
+  component ".graphql — GraphQL SDL" as F_GQL
+  component ".proto   — gRPC"      as F_GRPC
+  component ".sq / .sql — JDBC / SQLDelight" as F_JDBC
+  component ".json   — MCP tool manifest" as F_MCP
+}
+
+'-------------------------------------------------------------------
+'  Python — to_jsonschema converters + binding + registry + entities
+'-------------------------------------------------------------------
+rectangle "**comfyui_openapi_node (Python)**" <<python>> as PY {
+  rectangle "to_jsonschema/\n  openapi · asyncapi · graphql · grpc · mcp · jdbc · sqlite" as TOJS
+  rectangle "binding.py\nJSON Schema → ComfyUI spec" as BIND
+  rectangle "protocols/\n  http · sse · wss · jdbc"  as PRX
+  rectangle "codecs.py\n  json · xml · form ·\n  msgpack · protobuf" as CDC
+  rectangle "security.py\n  apikey · basic · bearer ·\n  jwt · oauth2 · oidc" as SEC
+  rectangle "registry.py\none class per op" as REG
+}
+
+'-------------------------------------------------------------------
+'  SQLite — thin index + unified logic
+'-------------------------------------------------------------------
+rectangle "**SQLite (JSON1 built-ins)**" <<sqlite>> as SQ {
+  rectangle "SchemaRegistry\n  index of on-disk .schema.json\n  json_extract · json_patch" as REGSQL
+  rectangle "EntityStore\n  entities · audit\n  one row, N projections" as ESTORE
+  rectangle "schema-registry files\n  schemas/<kind>/<api>/**/*.schema.json\n  (source of truth)" as FILES_ONDISK
+}
+
+'-------------------------------------------------------------------
+'  Kotlin facade — one process speaks every protocol.
+'-------------------------------------------------------------------
+rectangle "**api/api.mock.jbang.kt**\nKtor + Clikt subcommands" <<kotlin>> as MOCK {
+  component "openapi start\nWireMock from OpenAPI" as M_OAS
+  component "asyncapi echo\nKtor WS + SSE"         as M_AAS
+  component "mcp serve\nKtor JSON-RPC over SSE"    as M_MCP
+  component "rsocket serve\nrsocket-kotlin"        as M_RSK
+  component "jdbc serve\nSpring JdbcTemplate\n+ SQLDelight local"      as M_JDBC
+}
+
+'-------------------------------------------------------------------
+'  Canvas — what the user sees
+'-------------------------------------------------------------------
+rectangle "**ComfyUI canvas**" <<canvas>> as CUI {
+  component "typed node per\n(api × operation)"   as NODE
+  component "grid widget\nfor resultsets"         as GRID
+  component "SSE audit stream\nentity.replace · add · remove" as SSE
+}
+
+'-------------------------------------------------------------------
+'  Deliberately absent
+'-------------------------------------------------------------------
+rectangle "**Not required at test time**" <<absent>> as ABSENT {
+  component "Real API server" as NO_API
+  component "Real database"   as NO_DB
+  component "ComfyUI runtime" as NO_CUI
+}
+
+'-------------------------------------------------------------------
+'  Wires
+'-------------------------------------------------------------------
+U      ..> FILES : author / import
+FILES  --> TOJS  : per-kind\nconverter
+TOJS   --> BIND  : Canonical\n(JSON Schema spine)
+BIND   --> REG   : INPUT_TYPES +\nRETURN_TYPES
+REG    --> NODE  : NODE_CLASS_MAPPINGS
+
+NODE   ..> PRX   : on-execute
+PRX    ..> CDC   : encode / decode
+PRX    ..> SEC   : attach auth
+PRX    --> MOCK  : test-time
+PRX    --> NO_API: prod-time
+
+MOCK   ..> REGSQL : reads .schema.json
+MOCK   ..> ESTORE : read / patch / put
+ESTORE --> SSE   : audit rows
+
+REGSQL ..> FILES_ONDISK : path lookup
+PY     ..> REGSQL : put / get / merge
+PY     ..> ESTORE : put / project / patch
+
+note right of ESTORE
+  **One JDBC row, N API projections.**
+  `store.patch(..., api="openapi/billing")`
+  runs `SELECT json_patch(body, ?)`
+  in SQL; every property diff becomes
+  one audit row, streamable as SSE.
+end note
+
+note right of REGSQL
+  **Schemas are files, not rows.**
+  SQLite stores path + sha + a
+  json_valid(summary) so we can
+  answer "which APIs have an
+  `isbn` property?" in one query.
+end note
+
+note bottom of MOCK
+  Same process speaks
+  HTTP / WebDAV / REST /
+  HTTPS / WSS / SSE / gRPC /
+  MCP / JDBC. All mutations
+  land in EntityStore; all
+  reads come from projections.
+end note
+
+note bottom of ABSENT
+  No real API server, no
+  real database, no ComfyUI
+  runtime needed for tests.
+end note
+@enduml
