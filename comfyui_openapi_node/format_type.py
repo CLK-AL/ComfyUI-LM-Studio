@@ -6,23 +6,21 @@
     KClass (Kotlin) (as a FQN string on this side; real KClass<*> on Kt)
     ComposeWidget   (Compose Multiplatform widget)
     HtmlInputType   (HTML <input type=…> / <select> / <textarea>)
-    ComfyType       (ComfyUI INPUT_TYPES primitive)
+    ComfyType       (ComfyUI INPUT_TYPES primitive **and** every
+                     domain type — IMAGE, LATENT, MASK, MODEL, CLIP,
+                     VAE, CONDITIONING, CONTROL_NET, STYLE_MODEL,
+                     CLIP_VISION, CLIP_VISION_OUTPUT, UPSCALE_MODEL,
+                     AUDIO, VIDEO, WEBCAM)
 
-`HtmlInputType` covers every form-native HTML element we render to:
-the full `<input type=…>` roster (text, email, url, tel, number, date,
-time, datetime-local, month, week, color, checkbox, radio, file,
-password, range, search, hidden) plus the `<textarea>` and `<select>`
-elements that live outside `<input>`.
-
-`ComfyType` covers the five ComfyUI INPUT_TYPES primitives (STRING,
-INT, FLOAT, BOOLEAN, COMBO); COMBO absorbs dropdowns, radio groups,
-and multi-selects — rendering variant is picked by the Compose /
-HTML widgets next to it.
+`ComfyOption` is the separate flag set that goes inside the widget
+options dict — `forceInput`, `lazy`, `dynamicPrompts`, `defaultInput`,
+`multiline`, `image_upload`, etc. — surfacing every dynamic-UI knob
+ComfyUI's frontend recognises.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, Flag, auto
 
 from .sql_types import SqlTypes
 
@@ -52,6 +50,14 @@ class JsonFormat(str, Enum):
     DATE_TIME    = "date-time"
     MONTH        = "month"
     WEEK         = "week"
+    YEAR         = "year"
+    QUARTER      = "quarter"
+    DAY          = "day"          # day-of-month (1..31)
+    HOUR         = "hour"         # 0..23
+    MINUTE       = "minute"       # 0..59
+    SECOND       = "second"       # 0..59
+    MILLISECOND  = "millisecond"  # 0..999
+    TIMEZONE     = "timezone"     # IANA tz name, e.g. "Europe/London"
     DURATION     = "duration"
     IPV4         = "ipv4"
     IPV6         = "ipv6"
@@ -69,10 +75,18 @@ class JsonFormat(str, Enum):
     ENUM         = "enum"
     SEARCH       = "search"
     HIDDEN       = "hidden"
+    MARKDOWN     = "markdown"
+    # ComfyUI-specific media formats
+    IMAGE        = "image"
+    LATENT       = "latent"
+    MASK         = "mask"
+    AUDIO        = "audio"
+    VIDEO        = "video"
+    MODEL_REF    = "model-ref"
+    CONDITIONING = "conditioning"
 
 
 class HtmlInputType(str, Enum):
-    # <input type="…">
     TEXT           = "text"
     EMAIL          = "email"
     URL            = "url"
@@ -91,42 +105,106 @@ class HtmlInputType(str, Enum):
     RANGE          = "range"
     SEARCH         = "search"
     HIDDEN         = "hidden"
-    # non-<input> form elements carried under the same enum for
-    # uniform widget dispatch.
     TEXTAREA       = "textarea"
     SELECT         = "select"
     SELECT_MULTI   = "select[multiple]"
 
 
 class ComfyType(str, Enum):
-    STRING  = "STRING"
-    INT     = "INT"
-    FLOAT   = "FLOAT"
-    BOOLEAN = "BOOLEAN"
-    COMBO   = "COMBO"
+    # primitives
+    STRING            = "STRING"
+    INT               = "INT"
+    FLOAT             = "FLOAT"
+    BOOLEAN           = "BOOLEAN"
+    COMBO             = "COMBO"
+    # ComfyUI domain types (carried by every modern node graph)
+    IMAGE             = "IMAGE"
+    LATENT            = "LATENT"
+    MASK              = "MASK"
+    MODEL             = "MODEL"
+    CLIP              = "CLIP"
+    VAE               = "VAE"
+    CONDITIONING      = "CONDITIONING"
+    CONTROL_NET       = "CONTROL_NET"
+    STYLE_MODEL       = "STYLE_MODEL"
+    CLIP_VISION       = "CLIP_VISION"
+    CLIP_VISION_OUTPUT= "CLIP_VISION_OUTPUT"
+    UPSCALE_MODEL     = "UPSCALE_MODEL"
+    AUDIO             = "AUDIO"
+    VIDEO             = "VIDEO"
+    WEBCAM            = "WEBCAM"
 
 
 class ComposeWidget(str, Enum):
-    TEXT_FIELD          = "TextField"
-    OUTLINED_TEXT_FIELD = "OutlinedTextField"
-    PASSWORD_FIELD      = "TextField(visualTransformation=PasswordVisualTransformation())"
-    SEARCH_FIELD        = "SearchBar"
-    COLOR_PICKER        = "ColorPicker"
-    DATE_PICKER         = "DatePicker"
-    TIME_PICKER         = "TimePicker"
-    DATETIME_PICKER     = "DateTimePicker"
-    MONTH_PICKER        = "MonthPicker"
-    WEEK_PICKER         = "WeekPicker"
-    FILE_PICKER         = "FilePicker"
-    MAP_PICKER          = "MapPicker"
-    SLIDER              = "Slider"
-    RANGE_SLIDER        = "RangeSlider"
-    SWITCH              = "Switch"
-    CHECKBOX            = "Checkbox"
-    CHECKBOX_GROUP      = "CheckboxGroup"
-    RADIO_GROUP         = "RadioGroup"
-    DROPDOWN_MENU       = "DropdownMenu"
-    HIDDEN_FIELD        = "HiddenField"
+    TEXT_FIELD            = "TextField"
+    OUTLINED_TEXT_FIELD   = "OutlinedTextField"
+    PASSWORD_FIELD        = "TextField(visualTransformation=PasswordVisualTransformation())"
+    SEARCH_FIELD          = "SearchBar"
+    DYNAMIC_PROMPT_FIELD  = "DynamicPromptField"
+    MARKDOWN_VIEW         = "MarkdownView"
+    COLOR_PICKER          = "ColorPicker"
+    DATE_PICKER           = "DatePicker"
+    TIME_PICKER           = "TimePicker"
+    DATETIME_PICKER       = "DateTimePicker"
+    MONTH_PICKER          = "MonthPicker"
+    WEEK_PICKER           = "WeekPicker"
+    FILE_PICKER           = "FilePicker"
+    MAP_PICKER            = "MapPicker"
+    IMAGE_UPLOAD          = "ImageUpload"
+    MASK_EDITOR           = "MaskEditor"
+    WEBCAM_CAPTURE        = "WebcamCapture"
+    AUDIO_PLAYER          = "AudioPlayer"
+    VIDEO_PLAYER          = "VideoPlayer"
+    MODEL_PICKER          = "ModelPicker"
+    LATENT_PREVIEW        = "LatentPreview"
+    CONDITIONING_VIEW     = "ConditioningView"
+    SLIDER                = "Slider"
+    RANGE_SLIDER          = "RangeSlider"
+    KNOB                  = "Knob"
+    NUMBER_FIELD          = "NumberField"
+    SWITCH                = "Switch"
+    CHECKBOX              = "Checkbox"
+    CHECKBOX_GROUP        = "CheckboxGroup"
+    RADIO_GROUP           = "RadioGroup"
+    DROPDOWN_MENU         = "DropdownMenu"
+    HIDDEN_FIELD          = "HiddenField"
+
+
+class ComfyOption(Flag):
+    """Boolean knobs that ride along on the `INPUT_TYPES` options
+    dict. ComfyUI's frontend reads them to switch the widget's
+    rendering / behaviour.
+
+    `forceInput`        — render as an input socket, not a widget
+    `defaultInput`      — start as input socket, allow widget toggle
+    `lazy`              — defer execution until the node actually fires
+    `dynamicPrompts`    — interpret the value with the dynamic-prompts
+                          DSL ([alt|alt2], wildcards, …)
+    `multiline`         — STRING widget grows; renders <textarea>
+    `image_upload`      — COMBO of files plus a drag-and-drop area
+    `image_folder`      — COMBO sources files from a folder
+    `directory`         — file picker becomes a directory picker
+    `tooltip_md`        — interpret tooltip text as Markdown
+    """
+    NONE              = 0
+    FORCE_INPUT       = auto()
+    DEFAULT_INPUT     = auto()
+    LAZY              = auto()
+    DYNAMIC_PROMPTS   = auto()
+    MULTILINE         = auto()
+    IMAGE_UPLOAD      = auto()
+    IMAGE_FOLDER      = auto()
+    DIRECTORY         = auto()
+    TOOLTIP_MARKDOWN  = auto()
+
+
+class ComfyDisplay(str, Enum):
+    """Value of the `display` widget option. INT / FLOAT widgets
+    pick the rendering mode; STRING / BOOLEAN ignore it."""
+    NUMBER  = "number"
+    SLIDER  = "slider"
+    KNOB    = "knob"
+    COLOR   = "color"
 
 
 # ---- mapping + enum ----------------------------------------------------
@@ -135,7 +213,7 @@ class FormatMapping:
     json_type:   JsonType
     json_format: JsonFormat
     sql_type:    SqlTypes
-    kclass:      str                # Kotlin KClass FQN
+    kclass:      str
     composable:  ComposeWidget
     html_input:  HtmlInputType
     comfy:       ComfyType
@@ -154,6 +232,8 @@ class FormatType(Enum):
     # String & its formats
     TEXT          = FormatMapping(T.STRING,  F.NONE,         S.VARCHAR,     "kotlin.String",                         C.TEXT_FIELD,          H.TEXT,           Y.STRING)
     TEXTAREA      = FormatMapping(T.STRING,  F.TEXTAREA,     S.LONGVARCHAR, "kotlin.String",                         C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING)
+    DYNAMIC_PROMPT= FormatMapping(T.STRING,  F.TEXTAREA,     S.LONGVARCHAR, "kotlin.String",                         C.DYNAMIC_PROMPT_FIELD,H.TEXTAREA,       Y.STRING)
+    MARKDOWN      = FormatMapping(T.STRING,  F.MARKDOWN,     S.LONGVARCHAR, "kotlin.String",                         C.MARKDOWN_VIEW,       H.TEXTAREA,       Y.STRING)
     PASSWORD      = FormatMapping(T.STRING,  F.PASSWORD,     S.VARCHAR,     "kotlin.String",                         C.PASSWORD_FIELD,      H.PASSWORD,       Y.STRING)
     EMAIL         = FormatMapping(T.STRING,  F.EMAIL,        S.VARCHAR,     "kotlin.String",                         C.TEXT_FIELD,          H.EMAIL,          Y.STRING, "user@example.com")
     TEL           = FormatMapping(T.STRING,  F.TEL,          S.VARCHAR,     "kotlin.String",                         C.TEXT_FIELD,          H.TEL,            Y.STRING, "+1 555 0100")
@@ -166,6 +246,7 @@ class FormatType(Enum):
     DATETIME      = FormatMapping(T.STRING,  F.DATE_TIME,    S.TIMESTAMP,   "kotlinx.datetime.Instant",              C.DATETIME_PICKER,     H.DATETIME_LOCAL, Y.STRING, "YYYY-MM-DDTHH:MM:SSZ")
     MONTH         = FormatMapping(T.STRING,  F.MONTH,        S.VARCHAR,     "kotlin.String",                         C.MONTH_PICKER,        H.MONTH,          Y.STRING, "YYYY-MM")
     WEEK          = FormatMapping(T.STRING,  F.WEEK,         S.VARCHAR,     "kotlin.String",                         C.WEEK_PICKER,         H.WEEK,           Y.STRING, "YYYY-Www")
+    TIMEZONE      = FormatMapping(T.STRING,  F.TIMEZONE,     S.VARCHAR,     "kotlinx.datetime.TimeZone",             C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "Europe/London")
     DURATION      = FormatMapping(T.STRING,  F.DURATION,     S.VARCHAR,     "kotlin.time.Duration",                  C.TEXT_FIELD,          H.TEXT,           Y.STRING, "P1DT2H")
     IPV4          = FormatMapping(T.STRING,  F.IPV4,         S.VARCHAR,     "kotlin.String",                         C.TEXT_FIELD,          H.TEXT,           Y.STRING, "0.0.0.0")
     IPV6          = FormatMapping(T.STRING,  F.IPV6,         S.VARCHAR,     "kotlin.String",                         C.TEXT_FIELD,          H.TEXT,           Y.STRING, "::1")
@@ -185,13 +266,45 @@ class FormatType(Enum):
     FLOAT         = FormatMapping(T.NUMBER,  F.FLOAT,        S.REAL,        "kotlin.Float",                          C.SLIDER,              H.NUMBER,         Y.FLOAT)
     DOUBLE        = FormatMapping(T.NUMBER,  F.DOUBLE,       S.DOUBLE,      "kotlin.Double",                         C.SLIDER,              H.NUMBER,         Y.FLOAT)
     RANGE         = FormatMapping(T.NUMBER,  F.NONE,         S.REAL,        "kotlin.Float",                          C.RANGE_SLIDER,        H.RANGE,          Y.FLOAT)
-    # Boolean rendering variants (BOOL = Switch; CHECKBOX = native checkbox)
+    KNOB          = FormatMapping(T.NUMBER,  F.NONE,         S.REAL,        "kotlin.Float",                          C.KNOB,                H.RANGE,          Y.FLOAT)
+    NUMBER_FIELD  = FormatMapping(T.NUMBER,  F.NONE,         S.REAL,        "kotlin.Float",                          C.NUMBER_FIELD,        H.NUMBER,         Y.FLOAT)
+    # Date/time *parts* — rendered as `<input type="number">` with
+    # min/max bounds the operation's JSON Schema supplies. Defined
+    # AFTER INT32/INT64/FLOAT/DOUBLE so the SQL→FormatType dispatch
+    # picks the generic numeric form first for a bare INTEGER /
+    # SMALLINT column.
+    YEAR          = FormatMapping(T.INTEGER, F.YEAR,         S.INTEGER,     "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "YYYY")
+    QUARTER       = FormatMapping(T.INTEGER, F.QUARTER,      S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..4")
+    DAY           = FormatMapping(T.INTEGER, F.DAY,          S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "1..31")
+    HOUR          = FormatMapping(T.INTEGER, F.HOUR,         S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..23")
+    MINUTE        = FormatMapping(T.INTEGER, F.MINUTE,       S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..59")
+    SECOND        = FormatMapping(T.INTEGER, F.SECOND,       S.SMALLINT,    "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..59")
+    MILLISECOND   = FormatMapping(T.INTEGER, F.MILLISECOND,  S.INTEGER,     "kotlin.Int",                            C.NUMBER_FIELD,        H.NUMBER,         Y.INT,    "0..999")
+    # Boolean rendering variants
     BOOL          = FormatMapping(T.BOOLEAN, F.NONE,         S.BOOLEAN,     "kotlin.Boolean",                        C.SWITCH,              H.CHECKBOX,       Y.BOOLEAN)
     CHECKBOX      = FormatMapping(T.BOOLEAN, F.NONE,         S.BOOLEAN,     "kotlin.Boolean",                        C.CHECKBOX,            H.CHECKBOX,       Y.BOOLEAN)
     # Enum presentation variants
     ENUM          = FormatMapping(T.STRING,  F.ENUM,         S.VARCHAR,     "kotlin.String",                         C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO)
     RADIO         = FormatMapping(T.STRING,  F.ENUM,         S.VARCHAR,     "kotlin.String",                         C.RADIO_GROUP,         H.RADIO,          Y.COMBO)
     MULTI_SELECT  = FormatMapping(T.ARRAY,   F.ENUM,         S.ARRAY,       "kotlin.collections.List",               C.CHECKBOX_GROUP,      H.SELECT_MULTI,   Y.COMBO)
+    # ComfyUI domain types — most arrive over the wire as a reference
+    # name (model id, file path) so VARCHAR storage; the in-memory
+    # ComfyUI tensor types are runtime-only.
+    IMAGE              = FormatMapping(T.STRING, F.IMAGE,        S.VARCHAR,   "kotlin.String", C.IMAGE_UPLOAD,      H.FILE,   Y.IMAGE)
+    LATENT             = FormatMapping(T.OBJECT, F.LATENT,       S.OTHER,     "kotlinx.serialization.json.JsonObject", C.LATENT_PREVIEW,    H.HIDDEN, Y.LATENT)
+    MASK               = FormatMapping(T.STRING, F.MASK,         S.VARCHAR,   "kotlin.String", C.MASK_EDITOR,       H.FILE,   Y.MASK)
+    MODEL              = FormatMapping(T.STRING, F.MODEL_REF,    S.VARCHAR,   "kotlin.String", C.MODEL_PICKER,      H.SELECT, Y.MODEL,             "model.safetensors")
+    CLIP               = FormatMapping(T.STRING, F.MODEL_REF,    S.VARCHAR,   "kotlin.String", C.MODEL_PICKER,      H.SELECT, Y.CLIP)
+    VAE                = FormatMapping(T.STRING, F.MODEL_REF,    S.VARCHAR,   "kotlin.String", C.MODEL_PICKER,      H.SELECT, Y.VAE)
+    CONDITIONING       = FormatMapping(T.OBJECT, F.CONDITIONING, S.OTHER,     "kotlinx.serialization.json.JsonObject", C.CONDITIONING_VIEW, H.HIDDEN, Y.CONDITIONING)
+    CONTROL_NET        = FormatMapping(T.STRING, F.MODEL_REF,    S.VARCHAR,   "kotlin.String", C.MODEL_PICKER,      H.SELECT, Y.CONTROL_NET)
+    STYLE_MODEL        = FormatMapping(T.STRING, F.MODEL_REF,    S.VARCHAR,   "kotlin.String", C.MODEL_PICKER,      H.SELECT, Y.STYLE_MODEL)
+    CLIP_VISION        = FormatMapping(T.STRING, F.MODEL_REF,    S.VARCHAR,   "kotlin.String", C.MODEL_PICKER,      H.SELECT, Y.CLIP_VISION)
+    CLIP_VISION_OUTPUT = FormatMapping(T.OBJECT, F.JSON,         S.OTHER,     "kotlinx.serialization.json.JsonObject", C.OUTLINED_TEXT_FIELD, H.HIDDEN, Y.CLIP_VISION_OUTPUT)
+    UPSCALE_MODEL      = FormatMapping(T.STRING, F.MODEL_REF,    S.VARCHAR,   "kotlin.String", C.MODEL_PICKER,      H.SELECT, Y.UPSCALE_MODEL)
+    AUDIO              = FormatMapping(T.STRING, F.AUDIO,        S.VARCHAR,   "kotlin.String", C.AUDIO_PLAYER,      H.FILE,   Y.AUDIO)
+    VIDEO              = FormatMapping(T.STRING, F.VIDEO,        S.VARCHAR,   "kotlin.String", C.VIDEO_PLAYER,      H.FILE,   Y.VIDEO)
+    WEBCAM             = FormatMapping(T.STRING, F.IMAGE,        S.VARCHAR,   "kotlin.String", C.WEBCAM_CAPTURE,    H.HIDDEN, Y.WEBCAM)
 
 
 # ---- dispatch helpers --------------------------------------------------
@@ -219,8 +332,6 @@ def _from_json_schema(schema: dict) -> "FormatType":
         return FormatType.JSON_ARRAY
     if t is JsonType.OBJECT:
         return FormatType.GEOJSON if f is JsonFormat.GEOJSON else FormatType.JSON_OBJECT
-    # STRING / NULL — match on format; prefer the first defined row
-    # for that format.
     for ft in FormatType:
         m = ft.value
         if m.json_type is JsonType.STRING and m.json_format is f:

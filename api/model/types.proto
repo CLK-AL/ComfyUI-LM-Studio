@@ -65,6 +65,23 @@ enum JsonFormat {
   JF_HIDDEN        = 27;
   JF_MONTH         = 28;
   JF_WEEK          = 29;
+  JF_MARKDOWN      = 30;
+  JF_YEAR          = 31;
+  JF_QUARTER       = 32;
+  JF_DAY           = 33;
+  JF_HOUR          = 34;
+  JF_MINUTE        = 35;
+  JF_SECOND        = 36;
+  JF_MILLISECOND   = 37;
+  JF_TIMEZONE      = 38;
+  // ComfyUI domain media formats
+  JF_IMAGE         = 39;
+  JF_LATENT        = 40;
+  JF_MASK          = 41;
+  JF_AUDIO         = 42;
+  JF_VIDEO         = 43;
+  JF_MODEL_REF     = 44;
+  JF_CONDITIONING  = 45;
 }
 
 // Numeric values mirror java.sql.Types exactly. Negative values
@@ -138,12 +155,28 @@ enum HtmlInputType {
 }
 
 enum ComfyType {
-  CY_UNSPECIFIED = 0;
-  CY_STRING      = 1;
-  CY_INT         = 2;
-  CY_FLOAT       = 3;
-  CY_BOOLEAN     = 4;
-  CY_COMBO       = 5;
+  CY_UNSPECIFIED         = 0;
+  CY_STRING              = 1;
+  CY_INT                 = 2;
+  CY_FLOAT               = 3;
+  CY_BOOLEAN             = 4;
+  CY_COMBO               = 5;
+  // ComfyUI domain types
+  CY_IMAGE               = 6;
+  CY_LATENT              = 7;
+  CY_MASK                = 8;
+  CY_MODEL               = 9;
+  CY_CLIP                = 10;
+  CY_VAE                 = 11;
+  CY_CONDITIONING        = 12;
+  CY_CONTROL_NET         = 13;
+  CY_STYLE_MODEL         = 14;
+  CY_CLIP_VISION         = 15;
+  CY_CLIP_VISION_OUTPUT  = 16;
+  CY_UPSCALE_MODEL       = 17;
+  CY_AUDIO               = 18;
+  CY_VIDEO               = 19;
+  CY_WEBCAM              = 20;
 }
 
 enum ComposeWidget {
@@ -168,6 +201,41 @@ enum ComposeWidget {
   CW_RADIO_GROUP        = 18;
   CW_DROPDOWN_MENU      = 19;
   CW_HIDDEN_FIELD       = 20;
+  CW_DYNAMIC_PROMPT_FIELD = 21;
+  CW_MARKDOWN_VIEW      = 22;
+  CW_IMAGE_UPLOAD       = 23;
+  CW_MASK_EDITOR        = 24;
+  CW_WEBCAM_CAPTURE     = 25;
+  CW_AUDIO_PLAYER       = 26;
+  CW_VIDEO_PLAYER       = 27;
+  CW_MODEL_PICKER       = 28;
+  CW_LATENT_PREVIEW     = 29;
+  CW_CONDITIONING_VIEW  = 30;
+  CW_KNOB               = 31;
+  CW_NUMBER_FIELD       = 32;
+}
+
+// ComfyUI dynamic-UI flags carried in the widget options dict.
+enum ComfyOption {
+  CO_UNSPECIFIED       = 0;
+  CO_FORCE_INPUT       = 1;  // forceInput
+  CO_DEFAULT_INPUT     = 2;  // defaultInput
+  CO_LAZY              = 3;  // lazy
+  CO_DYNAMIC_PROMPTS   = 4;  // dynamicPrompts
+  CO_MULTILINE         = 5;  // multiline
+  CO_IMAGE_UPLOAD      = 6;  // image_upload
+  CO_IMAGE_FOLDER      = 7;  // image_folder
+  CO_DIRECTORY         = 8;  // directory
+  CO_TOOLTIP_MARKDOWN  = 9;  // tooltip_md
+}
+
+// `display` widget option for INT / FLOAT widgets in ComfyUI.
+enum ComfyDisplay {
+  CD_UNSPECIFIED = 0;
+  CD_NUMBER      = 1;
+  CD_SLIDER      = 2;
+  CD_KNOB        = 3;
+  CD_COLOR       = 4;
 }
 
 // ----- mapping message --------------------------------------------------

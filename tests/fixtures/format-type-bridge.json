@@ -1,5 +1,5 @@
 {
-  "_note": "Shared fixture for the FormatType 5-way bridge. The Python test (tests/test_format_type.py) and the Kotlin test (planned, reads the same file) both assert every row matches. Generated from comfyui_openapi_node/format_type.py \u2014 re-run the regeneration script if enums change.",
+  "_note": "Shared fixture for the FormatType bridge. Generated from comfyui_openapi_node/format_type.py.",
   "rows": [
     {
       "name": "TEXT",
@@ -15,6 +15,26 @@
       "name": "TEXTAREA",
       "json_type": "string",
       "json_format": "textarea",
+      "sql_type": "LONGVARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "textarea",
+      "comfy": "STRING",
+      "sql_type_code": -1
+    },
+    {
+      "name": "DYNAMIC_PROMPT",
+      "json_type": "string",
+      "json_format": "textarea",
+      "sql_type": "LONGVARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "textarea",
+      "comfy": "STRING",
+      "sql_type_code": -1
+    },
+    {
+      "name": "MARKDOWN",
+      "json_type": "string",
+      "json_format": "markdown",
       "sql_type": "LONGVARCHAR",
       "kclass": "kotlin.String",
       "html_input": "textarea",
@@ -139,6 +159,16 @@
       "kclass": "kotlin.String",
       "html_input": "week",
       "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "TIMEZONE",
+      "json_type": "string",
+      "json_format": "timezone",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlinx.datetime.TimeZone",
+      "html_input": "select",
+      "comfy": "COMBO",
       "sql_type_code": 12
     },
     {
@@ -312,6 +342,96 @@
       "sql_type_code": 7
     },
     {
+      "name": "KNOB",
+      "json_type": "number",
+      "json_format": null,
+      "sql_type": "REAL",
+      "kclass": "kotlin.Float",
+      "html_input": "range",
+      "comfy": "FLOAT",
+      "sql_type_code": 7
+    },
+    {
+      "name": "NUMBER_FIELD",
+      "json_type": "number",
+      "json_format": null,
+      "sql_type": "REAL",
+      "kclass": "kotlin.Float",
+      "html_input": "number",
+      "comfy": "FLOAT",
+      "sql_type_code": 7
+    },
+    {
+      "name": "YEAR",
+      "json_type": "integer",
+      "json_format": "year",
+      "sql_type": "INTEGER",
+      "kclass": "kotlin.Int",
+      "html_input": "number",
+      "comfy": "INT",
+      "sql_type_code": 4
+    },
+    {
+      "name": "QUARTER",
+      "json_type": "integer",
+      "json_format": "quarter",
+      "sql_type": "SMALLINT",
+      "kclass": "kotlin.Int",
+      "html_input": "number",
+      "comfy": "INT",
+      "sql_type_code": 5
+    },
+    {
+      "name": "DAY",
+      "json_type": "integer",
+      "json_format": "day",
+      "sql_type": "SMALLINT",
+      "kclass": "kotlin.Int",
+      "html_input": "number",
+      "comfy": "INT",
+      "sql_type_code": 5
+    },
+    {
+      "name": "HOUR",
+      "json_type": "integer",
+      "json_format": "hour",
+      "sql_type": "SMALLINT",
+      "kclass": "kotlin.Int",
+      "html_input": "number",
+      "comfy": "INT",
+      "sql_type_code": 5
+    },
+    {
+      "name": "MINUTE",
+      "json_type": "integer",
+      "json_format": "minute",
+      "sql_type": "SMALLINT",
+      "kclass": "kotlin.Int",
+      "html_input": "number",
+      "comfy": "INT",
+      "sql_type_code": 5
+    },
+    {
+      "name": "SECOND",
+      "json_type": "integer",
+      "json_format": "second",
+      "sql_type": "SMALLINT",
+      "kclass": "kotlin.Int",
+      "html_input": "number",
+      "comfy": "INT",
+      "sql_type_code": 5
+    },
+    {
+      "name": "MILLISECOND",
+      "json_type": "integer",
+      "json_format": "millisecond",
+      "sql_type": "INTEGER",
+      "kclass": "kotlin.Int",
+      "html_input": "number",
+      "comfy": "INT",
+      "sql_type_code": 4
+    },
+    {
       "name": "BOOL",
       "json_type": "boolean",
       "json_format": null,
@@ -360,6 +480,156 @@
       "html_input": "select[multiple]",
       "comfy": "COMBO",
       "sql_type_code": 2003
+    },
+    {
+      "name": "IMAGE",
+      "json_type": "string",
+      "json_format": "image",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "file",
+      "comfy": "IMAGE",
+      "sql_type_code": 12
+    },
+    {
+      "name": "LATENT",
+      "json_type": "object",
+      "json_format": "latent",
+      "sql_type": "OTHER",
+      "kclass": "kotlinx.serialization.json.JsonObject",
+      "html_input": "hidden",
+      "comfy": "LATENT",
+      "sql_type_code": 1111
+    },
+    {
+      "name": "MASK",
+      "json_type": "string",
+      "json_format": "mask",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "file",
+      "comfy": "MASK",
+      "sql_type_code": 12
+    },
+    {
+      "name": "MODEL",
+      "json_type": "string",
+      "json_format": "model-ref",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "MODEL",
+      "sql_type_code": 12
+    },
+    {
+      "name": "CLIP",
+      "json_type": "string",
+      "json_format": "model-ref",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "CLIP",
+      "sql_type_code": 12
+    },
+    {
+      "name": "VAE",
+      "json_type": "string",
+      "json_format": "model-ref",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "VAE",
+      "sql_type_code": 12
+    },
+    {
+      "name": "CONDITIONING",
+      "json_type": "object",
+      "json_format": "conditioning",
+      "sql_type": "OTHER",
+      "kclass": "kotlinx.serialization.json.JsonObject",
+      "html_input": "hidden",
+      "comfy": "CONDITIONING",
+      "sql_type_code": 1111
+    },
+    {
+      "name": "CONTROL_NET",
+      "json_type": "string",
+      "json_format": "model-ref",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "CONTROL_NET",
+      "sql_type_code": 12
+    },
+    {
+      "name": "STYLE_MODEL",
+      "json_type": "string",
+      "json_format": "model-ref",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "STYLE_MODEL",
+      "sql_type_code": 12
+    },
+    {
+      "name": "CLIP_VISION",
+      "json_type": "string",
+      "json_format": "model-ref",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "CLIP_VISION",
+      "sql_type_code": 12
+    },
+    {
+      "name": "CLIP_VISION_OUTPUT",
+      "json_type": "object",
+      "json_format": "json",
+      "sql_type": "OTHER",
+      "kclass": "kotlinx.serialization.json.JsonObject",
+      "html_input": "hidden",
+      "comfy": "CLIP_VISION_OUTPUT",
+      "sql_type_code": 1111
+    },
+    {
+      "name": "UPSCALE_MODEL",
+      "json_type": "string",
+      "json_format": "model-ref",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "UPSCALE_MODEL",
+      "sql_type_code": 12
+    },
+    {
+      "name": "AUDIO",
+      "json_type": "string",
+      "json_format": "audio",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "file",
+      "comfy": "AUDIO",
+      "sql_type_code": 12
+    },
+    {
+      "name": "VIDEO",
+      "json_type": "string",
+      "json_format": "video",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "file",
+      "comfy": "VIDEO",
+      "sql_type_code": 12
+    },
+    {
+      "name": "WEBCAM",
+      "json_type": "string",
+      "json_format": "image",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "hidden",
+      "comfy": "WEBCAM",
+      "sql_type_code": 12
     }
   ],
   "json_schema_dispatch": [
