@@ -15,8 +15,9 @@
 //DEPS io.ktor:ktor-server-content-negotiation-jvm:3.0.3
 //DEPS io.ktor:ktor-serialization-kotlinx-json-jvm:3.0.3
 
-// --- kotlinx serialization (shared codecs) ---
+// --- kotlinx serialization + datetime (shared codecs + FormatType) ---
 //DEPS org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3
+//DEPS org.jetbrains.kotlinx:kotlinx-datetime-jvm:0.6.1
 
 // --- RSocket ---
 //DEPS io.rsocket.kotlin:rsocket-core-jvm:0.20.0
@@ -49,6 +50,7 @@
 
 //SOURCES common/Naming.kt
 //SOURCES common/ComponentTables.kt
+//SOURCES common/SqlTypes.kt
 //SOURCES common/FormatType.kt
 //SOURCES common/JdbcExposed.kt
 //SOURCES openapi/Wiremock.kt

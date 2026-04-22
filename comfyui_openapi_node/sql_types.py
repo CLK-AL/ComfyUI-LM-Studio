@@ -21,52 +21,64 @@ Covers:
 """
 from __future__ import annotations
 
+from enum import IntEnum
 from typing import Any, Mapping
 
+
 # --- java.sql.Types ------------------------------------------------------
-# Values mirror the JDBC 4.2 constants so the Kotlin side can drop a
-# Types.XYZ ordinal into the wire format and the Python side rejoins
-# the same mapping.
-SQL_TYPES: dict[str, int] = {
-    "BIT":          -7,
-    "TINYINT":      -6,
-    "SMALLINT":      5,
-    "INTEGER":       4,
-    "BIGINT":       -5,
-    "FLOAT":         6,
-    "REAL":          7,
-    "DOUBLE":        8,
-    "NUMERIC":       2,
-    "DECIMAL":       3,
-    "CHAR":          1,
-    "VARCHAR":      12,
-    "LONGVARCHAR":  -1,
-    "DATE":         91,
-    "TIME":         92,
-    "TIMESTAMP":    93,
-    "TIMESTAMP_WITH_TIMEZONE": 2014,
-    "TIME_WITH_TIMEZONE":      2013,
-    "BINARY":       -2,
-    "VARBINARY":    -3,
-    "LONGVARBINARY": -4,
-    "NULL":          0,
-    "OTHER":      1111,
-    "JAVA_OBJECT": 2000,
-    "BLOB":       2004,
-    "CLOB":       2005,
-    "NCHAR":        -15,
-    "NVARCHAR":     -9,
-    "LONGNVARCHAR": -16,
-    "NCLOB":       2011,
-    "BOOLEAN":       16,
-    "ROWID":        -8,
-    "SQLXML":      2009,
-    "REF_CURSOR":  2012,
-    "ARRAY":       2003,
-    "STRUCT":      2002,
-    "REF":         2006,
-    "DATALINK":      70,
-}
+# IntEnum whose values match JDBC 4.2 numerically — cross-compare with
+# the Kotlin `SqlTypes` enum at `api/common/SqlTypes.kt` is literal.
+class SqlTypes(IntEnum):
+    BIT                      = -7
+    TINYINT                  = -6
+    SMALLINT                 = 5
+    INTEGER                  = 4
+    BIGINT                   = -5
+    FLOAT                    = 6
+    REAL                     = 7
+    DOUBLE                   = 8
+    NUMERIC                  = 2
+    DECIMAL                  = 3
+    CHAR                     = 1
+    VARCHAR                  = 12
+    LONGVARCHAR              = -1
+    DATE                     = 91
+    TIME                     = 92
+    TIMESTAMP                = 93
+    TIMESTAMP_WITH_TIMEZONE  = 2014
+    TIME_WITH_TIMEZONE       = 2013
+    BINARY                   = -2
+    VARBINARY                = -3
+    LONGVARBINARY            = -4
+    NULL                     = 0
+    OTHER                    = 1111
+    JAVA_OBJECT              = 2000
+    BLOB                     = 2004
+    CLOB                     = 2005
+    NCHAR                    = -15
+    NVARCHAR                 = -9
+    LONGNVARCHAR             = -16
+    NCLOB                    = 2011
+    BOOLEAN                  = 16
+    ROWID                    = -8
+    SQLXML                   = 2009
+    REF_CURSOR               = 2012
+    ARRAY                    = 2003
+    STRUCT                   = 2002
+    REF                      = 2006
+    DATALINK                 = 70
+
+    @classmethod
+    def from_name(cls, name: str) -> "SqlTypes":
+        return cls[name.upper()]
+
+    @classmethod
+    def from_code(cls, code: int) -> "SqlTypes":
+        return cls(code)
+
+
+# Backwards-compat name lookup: {"BIGINT": -5, …}
+SQL_TYPES: dict[str, int] = {m.name: m.value for m in SqlTypes}
 
 # --- JDBC SQL type name → JSON Schema fragment ---------------------------
 # Kept minimal but lossless — json_schema_to_comfy expands these into

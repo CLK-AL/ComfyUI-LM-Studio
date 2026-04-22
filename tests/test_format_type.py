@@ -33,12 +33,16 @@ def test_every_enum_row_matches_fixture():
     for ft in FormatType:
         row = by_name[ft.name]
         m = ft.value
-        assert m.json_type   == row["json_type"],   ft.name
-        assert m.json_format == row["json_format"], ft.name
-        assert m.sql_type    == row["sql_type"],    ft.name
-        assert m.kclass      == row["kclass"],      ft.name
-        assert m.html_input  == row["html_input"],  ft.name
-        assert m.comfy       == row["comfy"],       ft.name
+        assert m.json_type         == row["json_type"],   ft.name
+        assert m.json_format       == row["json_format"], ft.name
+        # sql_type is a real SqlTypes enum — compare by name + int code
+        # so the fixture stays human-readable while the contract is
+        # typed.
+        assert m.sql_type.name     == row["sql_type"],    ft.name
+        assert m.sql_type.value    == row["sql_type_code"], ft.name
+        assert m.kclass            == row["kclass"],      ft.name
+        assert m.html_input        == row["html_input"],  ft.name
+        assert m.comfy             == row["comfy"],       ft.name
 
 
 def test_json_schema_dispatch_matches_fixture():
@@ -56,17 +60,25 @@ def test_sql_dispatch_matches_fixture():
 def test_kotlin_mirror_is_sourced():
     kt = (REPO / "api" / "api.mock.jbang.kt").read_text()
     assert "common/FormatType.kt" in kt
+    assert "common/SqlTypes.kt" in kt
     mirror = (REPO / "api" / "common" / "FormatType.kt").read_text()
-    # A few canary rows need to match — full parity is enforced by the
-    # (future) Kotlin-side test that reads the same fixture.
+    sql_kt = (REPO / "api" / "common" / "SqlTypes.kt").read_text()
+    # Canary strings — the Kt side now uses real class references
+    # instead of FQN strings, so we look for the class tokens.
     for needle in (
-        '"kotlin.Long"',
-        '"kotlinx.datetime.LocalDate"',
-        '"DatePicker"',
-        '"datetime-local"',
-        '"kotlinx.serialization.json.JsonObject"',
+        "Long::class",
+        "LocalDate::class",
+        "DatePicker",
+        "datetime-local",
+        "JsonObject::class",
+        "SqlTypes.VARCHAR",
+        "SqlTypes.BIGINT",
     ):
         assert needle in mirror, needle
+    # SqlTypes enum canaries.
+    assert "enum class SqlTypes" in sql_kt
+    assert "BIGINT(-5)" in sql_kt
+    assert "VARCHAR(12)" in sql_kt
 
 
 def test_compose_widget_per_row_is_nonempty():
