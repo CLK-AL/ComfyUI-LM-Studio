@@ -1,0 +1,68 @@
+@startuml api-comfyui-node-ui
+!theme plain
+title How an auto-generated node renders on the ComfyUI canvas
+
+' Representation of the ComfyUI node widget — one card per
+' auto-generated operation; each slot's type comes from the
+' operation's JSON Schema via binding.py.
+
+skinparam defaultFontName Inconsolata
+skinparam rectangleBorderColor #5a5a5a
+skinparam rectangleBackgroundColor<<node>> #f5f5f0
+skinparam rectangleBackgroundColor<<input>> #eaf3ff
+skinparam rectangleBackgroundColor<<output>> #eaffea
+
+rectangle "**API · lm-studio · chatCompletions**" <<node>> as N {
+  rectangle "inputs" as IN {
+    rectangle "required" as INR {
+      rectangle "**model**  — STRING\n'TheBloke/Mistral-7B-Instruct-v0.2-GGUF'" <<input>> as P_model
+      rectangle "**messages**  — STRING (multiline JSON array)\n[{'role':'user','content':'hi'}]"    <<input>> as P_messages
+    }
+    rectangle "optional" as INO {
+      rectangle "**temperature**  — FLOAT  [0.0 … 1.0]  0.7"  <<input>> as P_temp
+      rectangle "**max_tokens**  — INT    [1 … 4096]   1000" <<input>> as P_mt
+      rectangle "**stream**  — BOOLEAN   (default: false)"   <<input>> as P_stream
+      rectangle "**server_url**  — STRING  'http://127.0.0.1:1234'" <<input>> as P_srv
+      rectangle "**auth_scheme**  — STRING  ''"                    <<input>> as P_auth
+      rectangle "**credentials_json**  — STRING (multiline)  '{}'"  <<input>> as P_creds
+    }
+  }
+  rectangle "outputs" as OUT {
+    rectangle "**choices** — STRING  (from 2xx response.schema)"  <<output>> as O_choices
+    rectangle "**usage**   — STRING"                             <<output>> as O_usage
+    rectangle "**stats**   — STRING"                             <<output>> as O_stats
+    rectangle "**body**    — STRING  (canonical tail)"           <<output>> as O_body
+    rectangle "**stats**   — STRING  (canonical tail)"           <<output>> as O_tail_stats
+    rectangle "**headers** — STRING  (canonical tail)"           <<output>> as O_headers
+  }
+}
+
+note right of INR
+  Required inputs come from
+   * `parameters[].required: true`
+   * `requestBody.schema.required[]`
+  The type is picked by `binding.json_schema_to_comfy()`:
+   integer → INT  number → FLOAT
+   boolean → BOOLEAN  string → STRING
+   enum    → ComfyUI dropdown
+   $ref    → resolved inline
+   array / oneOf / object → multiline JSON STRING
+end note
+
+note right of OUT
+  Typed outputs are prepended
+  to every API node's canonical
+  tail `(body, stats, headers)`
+  from the first 2xx
+  `application/json` schema.
+  Downstream nodes see real
+  typed sockets, not a blob.
+end note
+
+note bottom of N
+  **One auto-generated class per (preset × operationId)**.
+  All classes inherit from OpenAPINode and keep the same
+  protocol / codec / security machinery — only INPUT_TYPES
+  and RETURN_TYPES differ per operation.
+end note
+@enduml

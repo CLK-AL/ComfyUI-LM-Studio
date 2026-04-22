@@ -1,0 +1,92 @@
+@startuml api-comfyui-concept
+!theme plain
+title "API ComfyUI" — any API spec becomes a ComfyUI node, automatically
+skinparam componentStyle rectangle
+skinparam defaultFontName Inconsolata
+skinparam linetype ortho
+
+actor  User   as U
+
+package "Spec sources" as SS {
+  file "OpenAPI"    as S_OAS
+  file "AsyncAPI"   as S_AAS
+  file "GraphQL\nschema" as S_GQL
+  file "MCP tool\nmanifest" as S_MCP
+  file "gRPC .proto" as S_GRPC
+  file "RSocket" as S_RSK
+}
+
+package "comfyui_openapi_node (Python)" as CORE {
+  component "loader.py\nfile · URL · raw · bytes" as LD
+  component "spec_kinds.py\ndispatch openapi/asyncapi/graphql/…"    as SK
+  component "binding.py\n**JSON Schema → ComfyUI spec**" as BIND
+  component "registry.py\n1 node class per\nspec × operation"      as REG
+  component "protocols/\nhttp · sse · wss"  as PRX
+  component "codecs.py\njson · xml · form ·\nmsgpack · protobuf"   as CDC
+  component "security.py\napiKey · bearer ·\nbasic · oauth(TBD)"   as SEC
+}
+
+package "ComfyUI runtime" as CUI {
+  rectangle "Node palette\n(per preset)" as PAL
+  rectangle "Graph canvas\ntyped slots: STRING/INT/FLOAT/\nBOOLEAN/enum + body/stats/headers" as GRAPH
+}
+
+package "/api (Kotlin mocks)" as APIM {
+  component "openapi/ WireMock" as KOAS
+  component "asyncapi/ Ktor"    as KAAS
+  component "mcp/ Kotlin SDK"   as KMCP
+  component "grpc/ grpc-kotlin" as KGRPC
+  component "rsocket/ rsocket-kotlin" as KRSK
+  component "common/codecs.kt\nkotlinx · xmlutil · msgpack" as KCDC
+}
+
+cloud "Real APIs\n(LM Studio, GitHub, anything)" as REAL
+
+U       ..>  S_OAS   : pick or paste
+S_OAS   ..>  LD
+S_AAS   ..>  LD
+S_GQL   ..>  LD
+S_MCP   ..>  LD
+S_GRPC  ..>  LD
+S_RSK   ..>  LD
+
+LD   --> SK
+SK   --> BIND
+BIND --> REG   : INPUT_TYPES +\nRETURN_TYPES
+REG  --> PAL   : NODE_CLASS_MAPPINGS
+PAL  --> GRAPH : user drops a node,\nwires typed sockets
+
+GRAPH ..> PRX  : on execute
+PRX   ..> CDC  : encode request\ndecode response
+PRX   ..> SEC  : attach credentials
+PRX   --> REAL : production path
+PRX   --> APIM : test path\n(jbang)
+
+APIM  ..> KCDC : shared kotlinx\ncontent negotiation
+APIM  --> KOAS
+APIM  --> KAAS
+APIM  --> KMCP
+APIM  --> KGRPC
+APIM  --> KRSK
+
+note right of BIND
+  The crux.
+  Any spec type that expresses its
+  shape in **JSON Schema**
+  (OpenAPI, AsyncAPI, JSON-RPC
+  tool schemas, GraphQL via
+  codegen) plugs into the same
+  binding layer.
+  **That's why AsyncAPI is one
+  adapter away — it reuses
+  OpenAPI's components.schemas.**
+end note
+
+note bottom of GRAPH
+  ComfyUI is a visual pipeline
+  scheduler with async execution
+  and typed edges. Feeding it
+  API operations turns the node
+  graph into a visual IPaaS.
+end note
+@enduml

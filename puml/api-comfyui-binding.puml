@@ -1,0 +1,71 @@
+@startuml api-comfyui-binding
+!theme plain
+title Binding sequence — spec load → typed node class → graph execution
+skinparam defaultFontName Inconsolata
+skinparam sequenceMessageAlign center
+
+actor        User                         as U
+participant "loader.py"                   as LD
+participant "spec_kinds.py"               as SK
+participant "binding.py"                  as BIND
+participant "registry.py"                 as REG
+participant "ComfyUI"                     as CUI
+participant "OpenAPINode\n(typed subclass)" as N
+participant "protocols/http.py"           as PRX
+participant "codecs.py"                   as CDC
+participant "API server\n(real or /api mock)" as API
+
+== 1. Load-time — executed once when ComfyUI imports the package ==
+U  -> LD  : spec_source\n(path / URL / preset:lm-studio / raw YAML)
+LD -> SK  : pick handler by kind\n(openapi | asyncapi | graphql | mcp)
+SK -> BIND : operation_to_input_types(op, components)
+note right of BIND
+  JSON Schema →
+   - STRING / INT / FLOAT / BOOLEAN
+   - enum → tuple-of-values (ComfyUI dropdown)
+   - $ref  → resolved (depth ≤ 4, cycle-safe)
+   - object → properties fanned out as slots
+   - array / oneOf / allOf → multiline STRING JSON
+end note
+SK -> BIND : operation_to_return_types(op, components)
+note right of BIND
+  First 2xx JSON-schema properties →
+  typed output slots (INT/FLOAT/STRING/BOOLEAN),
+  followed by the canonical tail
+  (body, stats, headers).
+end note
+BIND --> REG : (INPUT_TYPES, RETURN_TYPES, RETURN_NAMES)
+REG  -> REG  : generate `OpenAPI_<preset>_<opId>` subclass\nCATEGORY = "API/<preset>"
+REG  -> CUI  : NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+
+== 2. Design-time — user edits the graph ==
+U  -> CUI : drop node "API · lm-studio · chatCompletions"
+CUI -> N : INPUT_TYPES()\n(typed widgets render)
+N  --> CUI : STRING model, STRING messages, FLOAT temperature,\nINT max_tokens, BOOL stream, …
+U  -> CUI : fill inputs, wire outputs
+
+== 3. Run-time — graph executes a node ==
+CUI -> N : invoke_typed(**slot_values)
+N  -> N  : split params vs body props
+N  -> PRX : execute(operation, method, server_url, values,\n           auth_scheme, credentials)
+PRX -> CDC : encode request body\n(content-type negotiation)
+CDC --> PRX : bytes
+PRX -> API : HTTP request (or SSE / WS on other protocols)
+API --> PRX : response bytes + Content-Type
+PRX -> CDC : decode response\n(json / xml / form / msgpack / proto / bytes)
+CDC --> PRX : dict / list / str
+PRX --> N : Response(body, stats, headers, …)
+N  -> N  : fan decoded fields into typed output slots
+N  --> CUI : (slot_0, slot_1, …, body, stats, headers)
+CUI --> U  : downstream nodes consume
+
+== 4. Test-time — pytest ==
+note over PRX, API
+  In tests, `API` is the
+  jbang WireMock facade
+  in `/api/openapi/`, seeded
+  from `/api/openapi/spec/lm-studio.yaml`.
+  Same codepath — nothing in the
+  node knows it's talking to a mock.
+end note
+@enduml

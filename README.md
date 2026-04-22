@@ -120,6 +120,32 @@ Enable debug mode to see:
 - LM Studio (running locally)
 - See `requirements.txt` for Python packages
 
+## API ComfyUI — concept
+
+The node is a generic **API ComfyUI** surface: pick a spec kind
+(OpenAPI today; AsyncAPI / GraphQL / MCP / gRPC / RSocket slots wired
+through `spec_kinds.py`), load the spec from path / URL / raw JSON /
+raw YAML / bytes, and the binding layer translates each operation's
+JSON Schema into a ComfyUI node spec — `INPUT_TYPES`, `RETURN_TYPES`,
+`RETURN_NAMES` — with typed slots (`STRING` / `INT` / `FLOAT` /
+`BOOLEAN` / enum dropdowns). LM Studio is the first bundled preset.
+
+![concept](./puml/api-comfyui-concept.png)
+
+![binding sequence](./puml/api-comfyui-binding.png)
+
+![node UI](./puml/api-comfyui-node-ui.png)
+
+Sources: [`puml/api-comfyui-concept.puml`](./puml/api-comfyui-concept.puml),
+[`puml/api-comfyui-binding.puml`](./puml/api-comfyui-binding.puml),
+[`puml/api-comfyui-node-ui.puml`](./puml/api-comfyui-node-ui.puml).
+
+Why the JSON Schema spine matters: **AsyncAPI shares OpenAPI's
+`components.schemas` vocabulary**, so the binding layer built for
+OpenAPI becomes AsyncAPI the moment you add an adapter that hands
+`binding.py` an `(operation-like dict, components-like dict)` pair.
+GraphQL, MCP tool manifests and gRPC plug in the same way.
+
 ## Testing
 
 The node is the unit under test: a ComfyUI node's public surface is just
