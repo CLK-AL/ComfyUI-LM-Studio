@@ -33,16 +33,20 @@ def test_every_enum_row_matches_fixture():
     for ft in FormatType:
         row = by_name[ft.name]
         m = ft.value
-        assert m.json_type         == row["json_type"],   ft.name
-        assert m.json_format       == row["json_format"], ft.name
-        # sql_type is a real SqlTypes enum — compare by name + int code
-        # so the fixture stays human-readable while the contract is
-        # typed.
-        assert m.sql_type.name     == row["sql_type"],    ft.name
-        assert m.sql_type.value    == row["sql_type_code"], ft.name
-        assert m.kclass            == row["kclass"],      ft.name
-        assert m.html_input        == row["html_input"],  ft.name
-        assert m.comfy             == row["comfy"],       ft.name
+        # Compare via enum `.value` strings so the fixture stays
+        # human-readable while the contract is typed.
+        assert m.json_type.value  == row["json_type"],   ft.name
+        # `json_format` stays as a JsonFormat enum — the fixture rows
+        # carry `null` for the no-format case, which matches
+        # `JsonFormat.NONE.value == ""`.
+        fixture_fmt = row["json_format"]
+        got_fmt     = m.json_format.value if m.json_format.value else None
+        assert got_fmt == fixture_fmt, (ft.name, fixture_fmt, got_fmt)
+        assert m.sql_type.name    == row["sql_type"],       ft.name
+        assert m.sql_type.value   == row["sql_type_code"],  ft.name
+        assert m.kclass           == row["kclass"],         ft.name
+        assert m.html_input.value == row["html_input"],     ft.name
+        assert m.comfy.value      == row["comfy"],          ft.name
 
 
 def test_json_schema_dispatch_matches_fixture():
@@ -83,7 +87,9 @@ def test_kotlin_mirror_is_sourced():
 
 def test_compose_widget_per_row_is_nonempty():
     for ft in FormatType:
-        assert ft.value.composable, ft.name
+        # composable is now a ComposeWidget enum; its `.value` is the
+        # Compose function-name string consumed by the UI layer.
+        assert ft.value.composable.value, ft.name
 
 
 def test_placeholder_present_where_expected():

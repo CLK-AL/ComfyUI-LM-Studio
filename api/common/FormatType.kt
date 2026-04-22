@@ -1,10 +1,9 @@
-// Five-way bridge: one enum value per format, mappings per row.
-// Mirror of comfyui_openapi_node/format_type.py — the shared fixture
-// `tests/fixtures/format-type-bridge.json` drives parity tests on both
-// sides so the two implementations never drift.
+// Five-way bridge: one enum value per format, all fields are typed.
+// Mirror of comfyui_openapi_node/format_type.py — shared fixture at
+// tests/fixtures/format-type-bridge.json drives parity both ways.
 //
-// JSON Schema ↔ SQL ↔ **Kotlin KClass (real, not a string)** ↔
-// Compose widget ↔ HTML <input> ↔ ComfyUI INPUT_TYPES primitive.
+// JsonType + JsonFormat ↔ SqlTypes ↔ KClass<*> ↔ ComposeWidget
+//   ↔ HtmlInputType ↔ ComfyType.
 
 import kotlin.reflect.KClass
 import kotlinx.datetime.Instant
@@ -14,52 +13,105 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlin.time.Duration
 
+// ----- vocabulary enums -------------------------------------------------
+enum class JsonType(val value: String) {
+    STRING("string"), INTEGER("integer"), NUMBER("number"),
+    BOOLEAN("boolean"), OBJECT("object"), ARRAY("array"),
+    NULL_("null");
+
+    companion object {
+        fun fromValue(v: String?): JsonType =
+            entries.firstOrNull { it.value == v } ?: STRING
+    }
+}
+
+enum class JsonFormat(val value: String) {
+    NONE(""),
+    TEXTAREA("textarea"), PASSWORD("password"),
+    EMAIL("email"), TEL("tel"), URI("uri"), UUID("uuid"), COLOR("color"),
+    DATE("date"), TIME("time"), DATE_TIME("date-time"), DURATION("duration"),
+    IPV4("ipv4"), IPV6("ipv6"), HOSTNAME("hostname"),
+    REGEX("regex"), JSON_POINTER("json-pointer"),
+    BYTE("byte"), BINARY("binary"),
+    GEOJSON("geojson"), JSON("json"),
+    INT32("int32"), INT64("int64"), FLOAT("float"), DOUBLE("double"),
+    ENUM("enum");
+
+    companion object {
+        fun fromValue(v: String?): JsonFormat =
+            if (v.isNullOrEmpty()) NONE
+            else entries.firstOrNull { it.value == v } ?: NONE
+    }
+}
+
+enum class HtmlInputType(val value: String) {
+    TEXT("text"), EMAIL("email"), URL("url"), TEL("tel"),
+    NUMBER("number"), DATE("date"), TIME("time"),
+    DATETIME_LOCAL("datetime-local"), COLOR("color"),
+    CHECKBOX("checkbox"), FILE("file"), PASSWORD("password");
+}
+
+enum class ComfyType(val value: String) {
+    STRING_("STRING"), INT_("INT"), FLOAT_("FLOAT"),
+    BOOLEAN_("BOOLEAN"), COMBO("COMBO");
+}
+
+enum class ComposeWidget(val value: String) {
+    TEXT_FIELD("TextField"),
+    OUTLINED_TEXT_FIELD("OutlinedTextField"),
+    PASSWORD_FIELD("TextField(visualTransformation=PasswordVisualTransformation())"),
+    COLOR_PICKER("ColorPicker"),
+    DATE_PICKER("DatePicker"),
+    TIME_PICKER("TimePicker"),
+    DATETIME_PICKER("DateTimePicker"),
+    FILE_PICKER("FilePicker"),
+    MAP_PICKER("MapPicker"),
+    SLIDER("Slider"),
+    SWITCH("Switch"),
+    DROPDOWN_MENU("DropdownMenu");
+}
+
+// ----- the bridge -------------------------------------------------------
 data class FormatMapping(
-    val jsonType: String,
-    val jsonFormat: String?,
-    /** The JDBC `SqlTypes` enum value — `sqlType.code` is the
-     *  `java.sql.Types` int, `sqlType.name` is the readable form
-     *  used in DDL and fixtures. */
-    val sqlType: SqlTypes,
-    /** Real Kotlin KClass — callers can do reflection, type-check,
-     *  serialise, etc. directly. `kclass.qualifiedName` produces the
-     *  FQN the parity fixture compares against. */
-    val kclass: KClass<*>,
-    val composable: String,
-    val htmlInput: String,
-    val comfy: String,
-    val placeholder: String = "",
+    val jsonType:   JsonType,
+    val jsonFormat: JsonFormat,
+    val sqlType:    SqlTypes,
+    val kclass:     KClass<*>,
+    val composable: ComposeWidget,
+    val htmlInput:  HtmlInputType,
+    val comfy:      ComfyType,
+    val placeholder:String = "",
 )
 
 enum class FormatType(val mapping: FormatMapping) {
-    TEXT(           FormatMapping("string",  null,          SqlTypes.VARCHAR,     String::class,     "TextField",        "text",            "STRING")),
-    TEXTAREA(       FormatMapping("string",  "textarea",    SqlTypes.LONGVARCHAR, String::class,     "OutlinedTextField","text",            "STRING")),
-    PASSWORD(       FormatMapping("string",  "password",    SqlTypes.VARCHAR,     String::class,     "TextField(visualTransformation=PasswordVisualTransformation())", "password", "STRING")),
-    EMAIL(          FormatMapping("string",  "email",       SqlTypes.VARCHAR,     String::class,     "TextField",        "email",           "STRING", "user@example.com")),
-    TEL(            FormatMapping("string",  "tel",         SqlTypes.VARCHAR,     String::class,     "TextField",        "tel",             "STRING", "+1 555 0100")),
-    URL(            FormatMapping("string",  "uri",         SqlTypes.VARCHAR,     String::class,     "TextField",        "url",             "STRING", "https://…")),
-    UUID(           FormatMapping("string",  "uuid",        SqlTypes.VARCHAR,     String::class,     "TextField",        "text",            "STRING", "00000000-0000-0000-0000-000000000000")),
-    COLOR(          FormatMapping("string",  "color",       SqlTypes.VARCHAR,     String::class,     "ColorPicker",      "color",           "STRING", "#RRGGBB")),
-    DATE(           FormatMapping("string",  "date",        SqlTypes.DATE,        LocalDate::class,  "DatePicker",       "date",            "STRING", "YYYY-MM-DD")),
-    TIME(           FormatMapping("string",  "time",        SqlTypes.TIME,        LocalTime::class,  "TimePicker",       "time",            "STRING", "HH:MM:SS")),
-    DATETIME(       FormatMapping("string",  "date-time",   SqlTypes.TIMESTAMP,   Instant::class,    "DateTimePicker",   "datetime-local",  "STRING", "YYYY-MM-DDTHH:MM:SSZ")),
-    DURATION(       FormatMapping("string",  "duration",    SqlTypes.VARCHAR,     Duration::class,   "TextField",        "text",            "STRING", "P1DT2H")),
-    IPV4(           FormatMapping("string",  "ipv4",        SqlTypes.VARCHAR,     String::class,     "TextField",        "text",            "STRING", "0.0.0.0")),
-    IPV6(           FormatMapping("string",  "ipv6",        SqlTypes.VARCHAR,     String::class,     "TextField",        "text",            "STRING", "::1")),
-    HOSTNAME(       FormatMapping("string",  "hostname",    SqlTypes.VARCHAR,     String::class,     "TextField",        "text",            "STRING", "example.com")),
-    REGEX(          FormatMapping("string",  "regex",       SqlTypes.VARCHAR,     String::class,     "TextField",        "text",            "STRING", "^.*$")),
-    JSON_POINTER(   FormatMapping("string",  "json-pointer",SqlTypes.VARCHAR,     String::class,     "TextField",        "text",            "STRING", "/foo/bar")),
-    BYTE(           FormatMapping("string",  "byte",        SqlTypes.VARBINARY,   ByteArray::class,  "FilePicker",       "file",            "STRING")),
-    BINARY(         FormatMapping("string",  "binary",      SqlTypes.BLOB,        ByteArray::class,  "FilePicker",       "file",            "STRING")),
-    GEOJSON(        FormatMapping("object",  "geojson",     SqlTypes.OTHER,       JsonObject::class, "MapPicker",        "text",            "STRING", "{\"type\":\"Point\",\"coordinates\":[0,0]}")),
-    JSON_OBJECT(    FormatMapping("object",  "json",        SqlTypes.OTHER,       JsonObject::class, "OutlinedTextField","text",            "STRING")),
-    JSON_ARRAY(     FormatMapping("array",   "json",        SqlTypes.ARRAY,       JsonArray::class,  "OutlinedTextField","text",            "STRING")),
-    INT32(          FormatMapping("integer", "int32",       SqlTypes.INTEGER,     Int::class,        "Slider",           "number",          "INT")),
-    INT64(          FormatMapping("integer", "int64",       SqlTypes.BIGINT,      Long::class,       "Slider",           "number",          "INT")),
-    FLOAT_(         FormatMapping("number",  "float",       SqlTypes.REAL,        Float::class,      "Slider",           "number",          "FLOAT")),
-    DOUBLE_(        FormatMapping("number",  "double",      SqlTypes.DOUBLE,      Double::class,     "Slider",           "number",          "FLOAT")),
-    BOOL(           FormatMapping("boolean", null,          SqlTypes.BOOLEAN,     Boolean::class,    "Switch",           "checkbox",        "BOOLEAN")),
-    ENUM(           FormatMapping("string",  "enum",        SqlTypes.VARCHAR,     String::class,     "DropdownMenu",     "text",            "COMBO")),
+    TEXT(         FormatMapping(JsonType.STRING,  JsonFormat.NONE,         SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_)),
+    TEXTAREA(     FormatMapping(JsonType.STRING,  JsonFormat.TEXTAREA,     SqlTypes.LONGVARCHAR, String::class,     ComposeWidget.OUTLINED_TEXT_FIELD, HtmlInputType.TEXT,           ComfyType.STRING_)),
+    PASSWORD(     FormatMapping(JsonType.STRING,  JsonFormat.PASSWORD,     SqlTypes.VARCHAR,     String::class,     ComposeWidget.PASSWORD_FIELD,      HtmlInputType.PASSWORD,       ComfyType.STRING_)),
+    EMAIL(        FormatMapping(JsonType.STRING,  JsonFormat.EMAIL,        SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.EMAIL,          ComfyType.STRING_, "user@example.com")),
+    TEL(          FormatMapping(JsonType.STRING,  JsonFormat.TEL,          SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEL,            ComfyType.STRING_, "+1 555 0100")),
+    URL(          FormatMapping(JsonType.STRING,  JsonFormat.URI,          SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.URL,            ComfyType.STRING_, "https://…")),
+    UUID(         FormatMapping(JsonType.STRING,  JsonFormat.UUID,         SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_, "00000000-0000-0000-0000-000000000000")),
+    COLOR(        FormatMapping(JsonType.STRING,  JsonFormat.COLOR,        SqlTypes.VARCHAR,     String::class,     ComposeWidget.COLOR_PICKER,        HtmlInputType.COLOR,          ComfyType.STRING_, "#RRGGBB")),
+    DATE(         FormatMapping(JsonType.STRING,  JsonFormat.DATE,         SqlTypes.DATE,        LocalDate::class,  ComposeWidget.DATE_PICKER,         HtmlInputType.DATE,           ComfyType.STRING_, "YYYY-MM-DD")),
+    TIME(         FormatMapping(JsonType.STRING,  JsonFormat.TIME,         SqlTypes.TIME,        LocalTime::class,  ComposeWidget.TIME_PICKER,         HtmlInputType.TIME,           ComfyType.STRING_, "HH:MM:SS")),
+    DATETIME(     FormatMapping(JsonType.STRING,  JsonFormat.DATE_TIME,    SqlTypes.TIMESTAMP,   Instant::class,    ComposeWidget.DATETIME_PICKER,     HtmlInputType.DATETIME_LOCAL, ComfyType.STRING_, "YYYY-MM-DDTHH:MM:SSZ")),
+    DURATION(     FormatMapping(JsonType.STRING,  JsonFormat.DURATION,     SqlTypes.VARCHAR,     Duration::class,   ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_, "P1DT2H")),
+    IPV4(         FormatMapping(JsonType.STRING,  JsonFormat.IPV4,         SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_, "0.0.0.0")),
+    IPV6(         FormatMapping(JsonType.STRING,  JsonFormat.IPV6,         SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_, "::1")),
+    HOSTNAME(     FormatMapping(JsonType.STRING,  JsonFormat.HOSTNAME,     SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_, "example.com")),
+    REGEX(        FormatMapping(JsonType.STRING,  JsonFormat.REGEX,        SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_, "^.*$")),
+    JSON_POINTER( FormatMapping(JsonType.STRING,  JsonFormat.JSON_POINTER, SqlTypes.VARCHAR,     String::class,     ComposeWidget.TEXT_FIELD,          HtmlInputType.TEXT,           ComfyType.STRING_, "/foo/bar")),
+    BYTE(         FormatMapping(JsonType.STRING,  JsonFormat.BYTE,         SqlTypes.VARBINARY,   ByteArray::class,  ComposeWidget.FILE_PICKER,         HtmlInputType.FILE,           ComfyType.STRING_)),
+    BINARY(       FormatMapping(JsonType.STRING,  JsonFormat.BINARY,       SqlTypes.BLOB,        ByteArray::class,  ComposeWidget.FILE_PICKER,         HtmlInputType.FILE,           ComfyType.STRING_)),
+    GEOJSON(      FormatMapping(JsonType.OBJECT,  JsonFormat.GEOJSON,      SqlTypes.OTHER,       JsonObject::class, ComposeWidget.MAP_PICKER,          HtmlInputType.TEXT,           ComfyType.STRING_, "{\"type\":\"Point\",\"coordinates\":[0,0]}")),
+    JSON_OBJECT(  FormatMapping(JsonType.OBJECT,  JsonFormat.JSON,         SqlTypes.OTHER,       JsonObject::class, ComposeWidget.OUTLINED_TEXT_FIELD, HtmlInputType.TEXT,           ComfyType.STRING_)),
+    JSON_ARRAY(   FormatMapping(JsonType.ARRAY,   JsonFormat.JSON,         SqlTypes.ARRAY,       JsonArray::class,  ComposeWidget.OUTLINED_TEXT_FIELD, HtmlInputType.TEXT,           ComfyType.STRING_)),
+    INT32(        FormatMapping(JsonType.INTEGER, JsonFormat.INT32,        SqlTypes.INTEGER,     Int::class,        ComposeWidget.SLIDER,              HtmlInputType.NUMBER,         ComfyType.INT_)),
+    INT64(        FormatMapping(JsonType.INTEGER, JsonFormat.INT64,        SqlTypes.BIGINT,      Long::class,       ComposeWidget.SLIDER,              HtmlInputType.NUMBER,         ComfyType.INT_)),
+    FLOAT_(       FormatMapping(JsonType.NUMBER,  JsonFormat.FLOAT,        SqlTypes.REAL,        Float::class,      ComposeWidget.SLIDER,              HtmlInputType.NUMBER,         ComfyType.FLOAT_)),
+    DOUBLE_(      FormatMapping(JsonType.NUMBER,  JsonFormat.DOUBLE,       SqlTypes.DOUBLE,      Double::class,     ComposeWidget.SLIDER,              HtmlInputType.NUMBER,         ComfyType.FLOAT_)),
+    BOOL(         FormatMapping(JsonType.BOOLEAN, JsonFormat.NONE,         SqlTypes.BOOLEAN,     Boolean::class,    ComposeWidget.SWITCH,              HtmlInputType.CHECKBOX,       ComfyType.BOOLEAN_)),
+    ENUM(         FormatMapping(JsonType.STRING,  JsonFormat.ENUM,         SqlTypes.VARCHAR,     String::class,     ComposeWidget.DROPDOWN_MENU,       HtmlInputType.TEXT,           ComfyType.COMBO)),
     ;
 
     /** FQN string (matches the Python `kclass` field in the fixture). */
@@ -69,31 +121,27 @@ enum class FormatType(val mapping: FormatMapping) {
     companion object {
         fun fromJsonSchema(schema: Map<String, Any?>): FormatType {
             if ("enum" in schema) return ENUM
-            val t = schema["type"] as? String
-            val f = (schema["format"] as? String) ?: ""
+            val t = JsonType.fromValue(schema["type"] as? String)
+            val f = JsonFormat.fromValue(schema["format"] as? String)
             return when (t) {
-                "boolean" -> BOOL
-                "integer" -> if (f == "int64") INT64 else INT32
-                "number"  -> if (f == "double") DOUBLE_ else FLOAT_
-                "array"   -> JSON_ARRAY
-                "object"  -> if (f == "geojson") GEOJSON else JSON_OBJECT
-                "string", null -> entries.firstOrNull {
-                    it.mapping.jsonType == "string" && (it.mapping.jsonFormat ?: "") == f
+                JsonType.BOOLEAN -> BOOL
+                JsonType.INTEGER -> if (f == JsonFormat.INT64) INT64 else INT32
+                JsonType.NUMBER  -> if (f == JsonFormat.DOUBLE) DOUBLE_ else FLOAT_
+                JsonType.ARRAY   -> JSON_ARRAY
+                JsonType.OBJECT  -> if (f == JsonFormat.GEOJSON) GEOJSON else JSON_OBJECT
+                JsonType.STRING, JsonType.NULL_ -> entries.firstOrNull {
+                    it.mapping.jsonType == JsonType.STRING && it.mapping.jsonFormat == f
                 } ?: TEXT
-                else -> TEXT
             }
         }
 
         fun fromSql(sqlType: SqlTypes): FormatType =
             entries.firstOrNull { it.mapping.sqlType == sqlType } ?: TEXT
 
-        /** Convenience overload — accepts the JDBC name. */
         fun fromSql(sqlTypeName: String): FormatType =
             try { fromSql(SqlTypes.fromName(sqlTypeName)) }
             catch (e: IllegalArgumentException) { TEXT }
 
-        /** Reverse lookup by KClass — any format declaring this
-         *  runtime type. Takes the first match. */
         fun fromKClass(kcls: KClass<*>): FormatType =
             entries.firstOrNull { it.mapping.kclass == kcls } ?: TEXT
     }
