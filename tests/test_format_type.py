@@ -67,14 +67,14 @@ def test_kotlin_mirror_is_sourced():
     assert "common/SqlTypes.kt" in kt
     mirror = (REPO / "api" / "common" / "FormatType.kt").read_text()
     sql_kt = (REPO / "api" / "common" / "SqlTypes.kt").read_text()
-    # Canary strings — the Kt side now uses real class references
-    # instead of FQN strings, so we look for the class tokens.
+    # Canary strings — the Kt side uses closed-set language-class
+    # enums (KClassEnum/JClassEnum/PyClassEnum) to bridge types.
     for needle in (
-        "Long::class",
-        "LocalDate::class",
+        "KClassEnum.LONG",
+        "KClassEnum.LOCAL_DATE",
+        "KClassEnum.JSON_OBJECT",
         "DatePicker",
         "datetime-local",
-        "JsonObject::class",
         "SqlTypes.VARCHAR",
         "SqlTypes.BIGINT",
     ):

@@ -1200,6 +1200,86 @@
       "html_input": "select",
       "comfy": "COMBO",
       "sql_type_code": 12
+    },
+    {
+      "name": "PERSON_NAME",
+      "json_type": "string",
+      "json_format": "person-name",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "text",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "NUMBER_FMT",
+      "json_type": "string",
+      "json_format": "number-fmt",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "text",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "DECIMAL",
+      "json_type": "string",
+      "json_format": "decimal",
+      "sql_type": "DECIMAL",
+      "kclass": "kotlin.String",
+      "html_input": "number",
+      "comfy": "STRING",
+      "sql_type_code": 3
+    },
+    {
+      "name": "CURRENCY",
+      "json_type": "string",
+      "json_format": "currency",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "text",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "MEASURE",
+      "json_type": "string",
+      "json_format": "measure",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "text",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "UNIT",
+      "json_type": "string",
+      "json_format": "unit",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "COMBO",
+      "sql_type_code": 12
+    },
+    {
+      "name": "ORDINAL",
+      "json_type": "string",
+      "json_format": "ordinal",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "text",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "PLURAL",
+      "json_type": "string",
+      "json_format": "plural",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "select",
+      "comfy": "COMBO",
+      "sql_type_code": 12
     }
   ],
   "json_schema_dispatch": [

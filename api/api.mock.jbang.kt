@@ -34,6 +34,14 @@
 //DEPS org.mnode.ical4j:ical4j:4.0.5
 //DEPS com.googlecode.ez-vcard:ez-vcard:0.12.1
 
+// --- Fake data generator (seeded; atomic counter for IDs) ---
+// Two providers registered in FakeProviderFactory — user picks via
+// `--faker datafaker|kotlin-faker` on subcommands that generate rows.
+// Since the stack is JVM + jbang + GraalVM 25 native we just ship
+// both and let them co-exist.
+//DEPS net.datafaker:datafaker:2.4.0
+//DEPS io.github.serpro69:kotlin-faker:1.16.0
+
 // --- RSocket ---
 //DEPS io.rsocket.kotlin:rsocket-core-jvm:0.20.0
 //DEPS io.rsocket.kotlin:rsocket-transport-ktor-websocket-server-jvm:0.20.0
@@ -69,6 +77,9 @@
 //SOURCES common/FormatType.kt
 //SOURCES common/JdbcExposed.kt
 //SOURCES common/IcsVcfParser.kt
+//SOURCES common/FakeProvider.kt
+//SOURCES common/DatafakerProvider.kt
+//SOURCES common/JClassKClass.kt
 //SOURCES openapi/Wiremock.kt
 //SOURCES asyncapi/AsyncApiServer.kt
 //SOURCES mcp/McpServer.kt

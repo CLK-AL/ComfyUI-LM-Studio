@@ -144,9 +144,17 @@ class JsonFormat(str, Enum):
     SEMI_DELIMITED  = "semi-delimited"
     CSV             = "csv"
     TSV             = "tsv"
-    # ICU / Unicode locale + calendar integration
-    LOCALE          = "locale"          # BCP 47 language tag
-    CALENDAR_SYSTEM = "calendar-system" # ICU calendar identifier
+    # ICU / Unicode locale + calendar + formatter integration
+    LOCALE          = "locale"           # BCP 47 language tag
+    CALENDAR_SYSTEM = "calendar-system"  # ICU calendar identifier
+    PERSON_NAME     = "person-name"      # ICU PersonNameFormatter
+    NUMBER_FMT      = "number-fmt"       # ICU NumberFormatter output
+    DECIMAL         = "decimal"          # decimal-formatted number
+    CURRENCY        = "currency"         # ISO 4217 amount, e.g. "USD 1,234.56"
+    MEASURE         = "measure"          # ICU Measure, e.g. "5 kg"
+    UNIT            = "unit"             # CLDR measure-unit identifier
+    ORDINAL         = "ordinal"          # "1st", "2nd" — CLDR ordinal plural
+    PLURAL          = "plural"           # CLDR plural category tag
 
 
 class HtmlInputType(str, Enum):
@@ -360,6 +368,256 @@ class VCardGender(str, Enum):
     OTHER     = "O"
     NONE_     = "N"
     UNKNOWN   = "U"
+
+
+# ---- Closed-set JClass / KClass enums (mirror of api/common/JClassKClass.kt)
+class KClassEnum(str, Enum):
+    """Kotlin FQN set referenced by FormatType rows."""
+    STRING      = "kotlin.String"
+    INT         = "kotlin.Int"
+    LONG        = "kotlin.Long"
+    FLOAT       = "kotlin.Float"
+    DOUBLE      = "kotlin.Double"
+    BOOLEAN     = "kotlin.Boolean"
+    BYTE_ARRAY  = "kotlin.ByteArray"
+    LIST        = "kotlin.collections.List"
+    LOCAL_DATE  = "kotlinx.datetime.LocalDate"
+    LOCAL_TIME  = "kotlinx.datetime.LocalTime"
+    INSTANT     = "kotlinx.datetime.Instant"
+    TIME_ZONE   = "kotlinx.datetime.TimeZone"
+    DURATION    = "kotlin.time.Duration"
+    JSON_OBJECT = "kotlinx.serialization.json.JsonObject"
+    JSON_ARRAY  = "kotlinx.serialization.json.JsonArray"
+
+
+class JClassEnum(str, Enum):
+    """`java.lang.*` / `java.time.*` / `java.math.*` FQNs a JDBC
+    result set / bean introspection hands us."""
+    STRING          = "java.lang.String"
+    INTEGER         = "java.lang.Integer"
+    LONG            = "java.lang.Long"
+    FLOAT           = "java.lang.Float"
+    DOUBLE          = "java.lang.Double"
+    BOOLEAN         = "java.lang.Boolean"
+    BIG_INTEGER     = "java.math.BigInteger"
+    BIG_DECIMAL     = "java.math.BigDecimal"
+    BYTE_ARRAY      = "byte[]"
+    LOCAL_DATE      = "java.time.LocalDate"
+    LOCAL_TIME      = "java.time.LocalTime"
+    LOCAL_DATETIME  = "java.time.LocalDateTime"
+    INSTANT         = "java.time.Instant"
+    OFFSET_DATETIME = "java.time.OffsetDateTime"
+    ZONED_DATETIME  = "java.time.ZonedDateTime"
+    ZONE_ID         = "java.time.ZoneId"
+    DURATION        = "java.time.Duration"
+    UUID            = "java.util.UUID"
+    URI             = "java.net.URI"
+    URL             = "java.net.URL"
+    # Jackson JSON tree — the idiomatic Java JSON shape. Kotlin side
+    # uses kotlinx.serialization.json.JsonObject / JsonArray; Java
+    # side picks up ObjectNode / ArrayNode of the JsonNode tree.
+    JSON_NODE       = "com.fasterxml.jackson.databind.JsonNode"
+    OBJECT_NODE     = "com.fasterxml.jackson.databind.node.ObjectNode"
+    ARRAY_NODE      = "com.fasterxml.jackson.databind.node.ArrayNode"
+
+
+class PyClassEnum(str, Enum):
+    """Closed set of Python classes the bridge recognises. Mirror of
+    `api/common/JClassKClass.kt` `PyClassEnum`. Values are the FQN a
+    pydantic / introspection call would surface (`type(x).__module__ +
+    "." + __qualname__`, or just `__qualname__` for built-ins)."""
+    STR             = "str"
+    INT             = "int"
+    FLOAT           = "float"
+    BOOL            = "bool"
+    BYTES           = "bytes"
+    BYTEARRAY       = "bytearray"
+    LIST            = "list"
+    DICT            = "dict"
+    TUPLE           = "tuple"
+    SET             = "set"
+    DATE            = "datetime.date"
+    TIME            = "datetime.time"
+    DATETIME        = "datetime.datetime"
+    TIMEDELTA       = "datetime.timedelta"
+    TZINFO          = "datetime.tzinfo"
+    ZONE_INFO       = "zoneinfo.ZoneInfo"
+    UUID            = "uuid.UUID"
+    DECIMAL         = "decimal.Decimal"
+    FRACTION        = "fractions.Fraction"
+    PATH            = "pathlib.Path"
+    URL             = "urllib.parse.ParseResult"
+    IPV4_ADDRESS    = "ipaddress.IPv4Address"
+    IPV6_ADDRESS    = "ipaddress.IPv6Address"
+
+
+# Paired KClass → JClass → PyClass — picked up by FormatMapping.
+# Mirrors the `KClassEnum` enum in `api/common/JClassKClass.kt` where
+# each KClass row literally carries its JClass and PyClass siblings.
+KCLASS_TO_JCLASS: dict[str, JClassEnum] = {
+    "kotlin.String":                         JClassEnum.STRING,
+    "kotlin.Int":                            JClassEnum.INTEGER,
+    "kotlin.Long":                           JClassEnum.LONG,
+    "kotlin.Float":                          JClassEnum.FLOAT,
+    "kotlin.Double":                         JClassEnum.DOUBLE,
+    "kotlin.Boolean":                        JClassEnum.BOOLEAN,
+    "kotlin.ByteArray":                      JClassEnum.BYTE_ARRAY,
+    "kotlin.collections.List":               JClassEnum.STRING,
+    "kotlinx.datetime.LocalDate":            JClassEnum.LOCAL_DATE,
+    "kotlinx.datetime.LocalTime":            JClassEnum.LOCAL_TIME,
+    "kotlinx.datetime.Instant":              JClassEnum.INSTANT,
+    "kotlinx.datetime.TimeZone":             JClassEnum.ZONE_ID,
+    "kotlin.time.Duration":                  JClassEnum.DURATION,
+    "kotlinx.serialization.json.JsonObject": JClassEnum.OBJECT_NODE,
+    "kotlinx.serialization.json.JsonArray":  JClassEnum.ARRAY_NODE,
+}
+
+KCLASS_TO_PYCLASS: dict[str, PyClassEnum] = {
+    "kotlin.String":                         PyClassEnum.STR,
+    "kotlin.Int":                            PyClassEnum.INT,
+    "kotlin.Long":                           PyClassEnum.INT,
+    "kotlin.Float":                          PyClassEnum.FLOAT,
+    "kotlin.Double":                         PyClassEnum.FLOAT,
+    "kotlin.Boolean":                        PyClassEnum.BOOL,
+    "kotlin.ByteArray":                      PyClassEnum.BYTES,
+    "kotlin.collections.List":               PyClassEnum.LIST,
+    "kotlinx.datetime.LocalDate":            PyClassEnum.DATE,
+    "kotlinx.datetime.LocalTime":            PyClassEnum.TIME,
+    "kotlinx.datetime.Instant":              PyClassEnum.DATETIME,
+    "kotlinx.datetime.TimeZone":             PyClassEnum.ZONE_INFO,
+    "kotlin.time.Duration":                  PyClassEnum.TIMEDELTA,
+    "kotlinx.serialization.json.JsonObject": PyClassEnum.DICT,
+    "kotlinx.serialization.json.JsonArray":  PyClassEnum.LIST,
+}
+
+
+# ---- ICU / CLDR vocabulary enums ---------------------------------------
+class IcuNumberStyle(str, Enum):
+    """ICU `NumberFormatter` notation styles."""
+    DECIMAL        = "decimal"
+    PERCENT        = "percent"
+    PERMILLE       = "permille"
+    SCIENTIFIC     = "scientific"
+    ENGINEERING    = "engineering"
+    COMPACT_SHORT  = "compact-short"
+    COMPACT_LONG   = "compact-long"
+    CURRENCY       = "currency"
+    UNIT           = "unit"
+    ACCOUNTING     = "accounting"
+
+
+class IcuPluralCategory(str, Enum):
+    """CLDR plural category (also the return value of `Locale.plural`)."""
+    ZERO  = "zero"
+    ONE   = "one"
+    TWO   = "two"
+    FEW   = "few"
+    MANY  = "many"
+    OTHER = "other"
+
+
+class IcuUnit(str, Enum):
+    """CLDR measure-unit identifiers (common subset ICU ships).
+    Full list at https://cldr.unicode.org/index/charts/summary/units ."""
+    # length
+    METER              = "length-meter"
+    KILOMETER          = "length-kilometer"
+    CENTIMETER         = "length-centimeter"
+    MILLIMETER         = "length-millimeter"
+    INCH               = "length-inch"
+    FOOT               = "length-foot"
+    YARD               = "length-yard"
+    MILE               = "length-mile"
+    # mass
+    GRAM               = "mass-gram"
+    KILOGRAM           = "mass-kilogram"
+    MILLIGRAM          = "mass-milligram"
+    POUND              = "mass-pound"
+    OUNCE              = "mass-ounce"
+    # volume
+    LITER              = "volume-liter"
+    MILLILITER         = "volume-milliliter"
+    GALLON             = "volume-gallon"
+    FLUID_OUNCE        = "volume-fluid-ounce"
+    # duration
+    SECOND             = "duration-second"
+    MINUTE             = "duration-minute"
+    HOUR               = "duration-hour"
+    DAY                = "duration-day"
+    WEEK               = "duration-week"
+    MONTH              = "duration-month"
+    YEAR               = "duration-year"
+    # speed
+    METER_PER_SECOND   = "speed-meter-per-second"
+    KILOMETER_PER_HOUR = "speed-kilometer-per-hour"
+    MILE_PER_HOUR      = "speed-mile-per-hour"
+    # temperature
+    CELSIUS            = "temperature-celsius"
+    FAHRENHEIT         = "temperature-fahrenheit"
+    KELVIN             = "temperature-kelvin"
+    # digital
+    BIT                = "digital-bit"
+    BYTE_              = "digital-byte"
+    KILOBYTE           = "digital-kilobyte"
+    MEGABYTE           = "digital-megabyte"
+    GIGABYTE           = "digital-gigabyte"
+    TERABYTE           = "digital-terabyte"
+    # angle / area / energy
+    DEGREE             = "angle-degree"
+    RADIAN             = "angle-radian"
+    HECTARE            = "area-hectare"
+    ACRE               = "area-acre"
+    JOULE              = "energy-joule"
+    CALORIE            = "energy-calorie"
+
+
+class IcuCurrency(str, Enum):
+    """ISO 4217 currency codes — representative set."""
+    USD = "USD"; EUR = "EUR"; GBP = "GBP"; JPY = "JPY"
+    CNY = "CNY"; INR = "INR"; BRL = "BRL"; CAD = "CAD"
+    AUD = "AUD"; CHF = "CHF"; SEK = "SEK"; NOK = "NOK"
+    DKK = "DKK"; RUB = "RUB"; KRW = "KRW"; MXN = "MXN"
+    ZAR = "ZAR"; SGD = "SGD"; HKD = "HKD"; NZD = "NZD"
+
+
+class IcuPersonNameStyle(str, Enum):
+    """ICU `PersonNameFormatter` style / length."""
+    LONG          = "long"
+    MEDIUM        = "medium"
+    SHORT         = "short"
+    GIVEN_FIRST   = "given-first"
+    SURNAME_FIRST = "surname-first"
+    INFORMAL      = "informal"
+    FORMAL        = "formal"
+    MONOGRAM      = "monogram"
+    INITIAL       = "initial"
+
+
+def format_for_jclass(fqn: str) -> str:
+    """Return the FormatType.name for a java class FQN, or 'TEXT'.
+    Uses `FormatType` itself as the bridge: each row carries its
+    paired JClassEnum, so we just scan until one matches."""
+    try:
+        target = JClassEnum(fqn)
+    except ValueError:
+        return "TEXT"
+    for ft in FormatType:
+        if ft.jclass is target:
+            return ft.name
+    return "TEXT"
+
+
+def format_for_pyclass(fqn: str) -> str:
+    """Return the FormatType.name for a Python class FQN, or 'TEXT'.
+    Same bridge as `format_for_jclass`, pivoting on PyClassEnum."""
+    try:
+        target = PyClassEnum(fqn)
+    except ValueError:
+        return "TEXT"
+    for ft in FormatType:
+        if ft.pyclass is target:
+            return ft.name
+    return "TEXT"
 
 
 class CalendarSystem(str, Enum):
@@ -587,9 +845,17 @@ class FormatType(Enum):
     SEMI_DELIMITED     = FormatMapping(T.STRING, F.SEMI_DELIMITED, S.LONGVARCHAR, "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "a;b;c")
     CSV_ROW            = FormatMapping(T.STRING, F.CSV,            S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, "a,b,c")
     TSV_ROW            = FormatMapping(T.STRING, F.TSV,            S.LONGVARCHAR, "kotlin.String", C.OUTLINED_TEXT_FIELD, H.TEXTAREA,       Y.STRING, "a\\tb\\tc")
-    # ICU / Unicode locale + calendar system integration
+    # ICU / Unicode locale + calendar + formatter integration
     LOCALE             = FormatMapping(T.STRING, F.LOCALE,         S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "en-US")
     CALENDAR_SYSTEM    = FormatMapping(T.STRING, F.CALENDAR_SYSTEM,S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "gregorian")
+    PERSON_NAME        = FormatMapping(T.STRING, F.PERSON_NAME,    S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "Ada Lovelace")
+    NUMBER_FMT         = FormatMapping(T.STRING, F.NUMBER_FMT,     S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "1,234.56")
+    DECIMAL            = FormatMapping(T.STRING, F.DECIMAL,        S.DECIMAL,     "kotlin.String", C.NUMBER_FIELD,        H.NUMBER,         Y.STRING, "0.00")
+    CURRENCY           = FormatMapping(T.STRING, F.CURRENCY,       S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "USD 1,234.56")
+    MEASURE            = FormatMapping(T.STRING, F.MEASURE,        S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "5 kg")
+    UNIT               = FormatMapping(T.STRING, F.UNIT,           S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "length-meter")
+    ORDINAL            = FormatMapping(T.STRING, F.ORDINAL,        S.VARCHAR,     "kotlin.String", C.TEXT_FIELD,          H.TEXT,           Y.STRING, "1st")
+    PLURAL             = FormatMapping(T.STRING, F.PLURAL,         S.VARCHAR,     "kotlin.String", C.DROPDOWN_MENU,       H.SELECT,         Y.COMBO,  "one / other")
 
 
 # ---- dispatch helpers --------------------------------------------------
@@ -645,6 +911,33 @@ def _from_sql(sql_type) -> "FormatType":
 
 FormatType.from_json_schema = staticmethod(_from_json_schema)   # type: ignore[attr-defined]
 FormatType.from_sql         = staticmethod(_from_sql)           # type: ignore[attr-defined]
+
+
+def _jclass(self: "FormatType") -> JClassEnum:
+    """Paired JClassEnum for this row's `kclass` FQN."""
+    return KCLASS_TO_JCLASS.get(self.value.kclass, JClassEnum.STRING)
+
+
+def _pyclass(self: "FormatType") -> PyClassEnum:
+    """Paired PyClassEnum for this row's `kclass` FQN."""
+    return KCLASS_TO_PYCLASS.get(self.value.kclass, PyClassEnum.STR)
+
+
+def _from_pyclass(fqn: str) -> "FormatType":
+    """`PyClassEnum.value` → FormatType (or TEXT if unknown)."""
+    try:
+        target = PyClassEnum(fqn)
+    except ValueError:
+        return FormatType.TEXT
+    for ft in FormatType:
+        if KCLASS_TO_PYCLASS.get(ft.value.kclass) is target:
+            return ft
+    return FormatType.TEXT
+
+
+FormatType.jclass       = property(_jclass)                     # type: ignore[attr-defined]
+FormatType.pyclass      = property(_pyclass)                    # type: ignore[attr-defined]
+FormatType.from_pyclass = staticmethod(_from_pyclass)           # type: ignore[attr-defined]
 
 
 # ---- Canonical FormatPatterns for compound formats --------------------
