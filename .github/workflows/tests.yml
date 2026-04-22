@@ -53,7 +53,7 @@ jobs:
             ~/.sdkman
             ~/.jbang
             ~/.m2/repository
-          key: ${{ runner.os }}-toolchain-${{ hashFiles('.sdkmanrc', 'tests/openapi.wiremock.jbang.kt') }}
+          key: ${{ runner.os }}-toolchain-${{ hashFiles('.sdkmanrc', 'api/openapi/openapi.wiremock.jbang.kt') }}
           restore-keys: |
             ${{ runner.os }}-toolchain-
 

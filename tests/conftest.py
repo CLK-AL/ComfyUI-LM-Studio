@@ -3,7 +3,7 @@
 The session-scoped `wiremock_base` fixture:
  1. Ensures SDKMAN + jbang are installed (see tests/bootstrap.py).
  2. Resolves the LM Studio OpenAPI spec: online first, local fallback.
- 3. Launches tests/openapi.wiremock.jbang.kt and waits for readiness.
+ 3. Launches api/openapi/openapi.wiremock.jbang.kt and waits for readiness.
  4. Yields the base URL; tears the facade down at session end.
 
 Override knobs:
@@ -29,7 +29,9 @@ from wiremock.constants import Config
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-SCRIPT = HERE / "openapi.wiremock.jbang.kt"
+API_ROOT = REPO / "api"
+SCRIPT = API_ROOT / "openapi" / "openapi.wiremock.jbang.kt"
+LOCAL_SPEC = API_ROOT / "openapi" / "spec" / "lm-studio.yaml"
 
 WIREMOCK_URL = os.environ.get("WIREMOCK_URL", "http://127.0.0.1:8089")
 SKIP_BOOTSTRAP = os.environ.get("SKIP_BOOTSTRAP") == "1"
@@ -150,10 +152,10 @@ def node():
 
 
 # --- Spec-driven endpoints -----------------------------------------------
-# Single source of truth for paths: tests/lms-openapi.yaml. Parse once per
+# Single source of truth for paths: api/openapi/spec/lm-studio.yaml. Parse once per
 # session. Tests reference paths by semantic key so endpoint renames
 # (e.g. /api/v0/… → /v1/…) only need one edit — the spec file itself.
-_SPEC_PATH = HERE / "lms-openapi.yaml"
+_SPEC_PATH = LOCAL_SPEC
 
 
 def _parse_openapi_paths(text: str) -> dict:
@@ -227,7 +229,7 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 f"### API coverage — {ref}",
                 "",
                 f"**{len(covered)}/{len(expected)} ({pct:.0f}%)** of "
-                f"`tests/lms-openapi.yaml` paths hit.",
+                f"`api/openapi/spec/lm-studio.yaml` paths hit.",
                 "",
                 "| status | method | path |",
                 "| :----: | :----- | :--- |",

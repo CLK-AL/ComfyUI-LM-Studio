@@ -41,8 +41,9 @@ OPENAPI_URLS: tuple[str, ...] = (
     "https://lmstudio.ai/docs/openapi.yaml",
     "https://docs.lmstudio.ai/openapi.yaml",
 )
-LOCAL_SPEC = HERE / "lms-openapi.yaml"
-SPEC_CACHE = HERE / ".cache" / "lms-openapi.yaml"
+API_ROOT = HERE.parent / "api"
+LOCAL_SPEC = API_ROOT / "openapi" / "spec" / "lm-studio.yaml"
+SPEC_CACHE = HERE / ".cache" / "lm-studio-openapi.yaml"
 # If set, require the spec's info.version to start with this string.
 EXPECTED_API_VERSION_PREFIX = os.environ.get("LMS_API_VERSION_PREFIX", "")
 

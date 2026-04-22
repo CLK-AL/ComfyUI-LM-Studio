@@ -35,9 +35,9 @@ SDK  --> BOOT  : ~/.sdkman/candidates/jbang/.../bin/jbang
 
 CONF -> BOOT   : fetch_openapi()
 alt upstream reachable
-  BOOT -> BOOT : GET lmstudio.ai/docs/openapi.yaml\n→ tests/.cache/lms-openapi.yaml
+  BOOT -> BOOT : GET lmstudio.ai/docs/openapi.yaml\n→ tests/.cache/lm-studio-openapi.yaml
 else offline / 5xx
-  BOOT -> BOOT : use tests/lms-openapi.yaml\n(local fallback)
+  BOOT -> BOOT : use api/openapi/spec/lm-studio.yaml\n(local fallback)
 end
 BOOT -> BOOT   : verify info.version prefix\n(if $LMS_API_VERSION_PREFIX set)
 BOOT --> CONF  : Path to spec
