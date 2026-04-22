@@ -13,8 +13,9 @@ WireMock and seeds stubs from the **LM Studio official OpenAPI** document.
 Runtime is **GraalVM 25 + Kotlin 2.3.2** pinned via `.sdkmanrc`, and the
 script can be AOT-compiled to a native binary.
 
-- **Toolchain**: `sdk env` (reads `.sdkmanrc`) → `java=25-graal`,
-  `kotlin=2.3.2`.
+- **Toolchain**: `sdk env` (reads `.sdkmanrc`) → `java=25.0.2-graal`
+  (Oracle GraalVM for JDK 25), `kotlin=2.3.20`, `jbang=0.138.0`.
+  Pins verified via `sdk list` on 2026-04-22.
 - **Facade**: `tests/wiremock-lms.kt` (jbang header declares deps:
   `org.wiremock:wiremock:3.9.1`, `com.github.ajalt.clikt:clikt:4.4.0`,
   `io.swagger.parser.v3:swagger-parser:2.1.22`).

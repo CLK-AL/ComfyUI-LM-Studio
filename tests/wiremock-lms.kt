@@ -1,5 +1,5 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
-//KOTLIN 2.3.2
+//KOTLIN 2.3.20
 //JAVA 25
 //RUNTIME_OPTIONS -Xmx256m
 //DEPS org.wiremock:wiremock:3.9.1
