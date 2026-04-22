@@ -19,10 +19,23 @@ from typing import Mapping
 from . import Canonical, OperationSchema
 
 
-def _payload(message: Mapping | None) -> dict:
+def _resolve_ref(ref: str, spec: Mapping) -> Mapping:
+    if not ref.startswith("#/"):
+        return {}
+    node: object = spec
+    for part in ref[2:].split("/"):
+        if not isinstance(node, Mapping):
+            return {}
+        node = node.get(part, {})
+    return node if isinstance(node, Mapping) else {}
+
+
+def _payload(message: Mapping | None, spec: Mapping | None = None) -> dict:
     if not isinstance(message, Mapping):
         return {}
-    return (message.get("payload") or {})
+    if "$ref" in message and spec is not None:
+        message = _resolve_ref(message["$ref"], spec) or message
+    return dict(message.get("payload") or {})
 
 
 def convert(spec: Mapping) -> Canonical:
@@ -36,7 +49,7 @@ def convert(spec: Mapping) -> Canonical:
             if not isinstance(entry, Mapping):
                 continue
             op_id = entry.get("operationId") or f"{action}:{ch_name}"
-            payload = _payload(entry.get("message"))
+            payload = _payload(entry.get("message"), spec)
             # Input vs. output: publish = we send; subscribe = we receive.
             if action == "publish":
                 input_schema, output_schema = payload, {}

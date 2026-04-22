@@ -1,0 +1,52 @@
+asyncapi: "2.6.0"
+info:
+  title: Simple Chat (AsyncAPI stub)
+  version: "0.1.0"
+  description: >
+    Minimal AsyncAPI 2.x stub used to prove the OpenAPI + AsyncAPI pipeline
+    share the same JSON Schema spine. Two channels, one `publish` and one
+    `subscribe` operation, both with a trivial Message payload.
+
+servers:
+  local:
+    url:      ws://127.0.0.1:8090
+    protocol: ws
+
+channels:
+  rooms.{roomId}.send:
+    parameters:
+      roomId:
+        schema: { type: string }
+    publish:
+      operationId: sendMessage
+      message:
+        name: ChatMessage
+        payload:
+          type: object
+          required: [text]
+          properties:
+            text:     { type: string }
+            user:     { type: string }
+            ts:       { type: integer, format: int64 }
+  rooms.{roomId}.receive:
+    parameters:
+      roomId:
+        schema: { type: string }
+    subscribe:
+      operationId: onMessage
+      message:
+        name: ChatMessage
+        payload:
+          type: object
+          properties:
+            text:     { type: string }
+            user:     { type: string }
+            ts:       { type: integer, format: int64 }
+
+components:
+  messages:
+    ChatMessage:
+      payload:
+        type: object
+        properties:
+          text: { type: string }

@@ -96,6 +96,61 @@ def operation_to_input_types(operation: Mapping[str, Any],
     return {"required": required, "optional": optional}
 
 
+def canonical_op_to_input_types(op: Mapping[str, Any],
+                                components: Mapping[str, Any] | None = None) -> dict:
+    """Same output shape as operation_to_input_types, but sourced from a
+    `to_jsonschema` canonical `OperationSchema` — protocol-agnostic."""
+    comps = components or {}
+    required: dict[str, Any] = {}
+    optional: dict[str, Any] = {}
+
+    for p in op.get("parameters") or []:
+        name = _safe_id(p.get("name", ""))
+        if not name:
+            continue
+        slot = json_schema_to_comfy(expand(p.get("schema") or {}, comps), name)
+        (required if p.get("required") else optional)[name] = slot
+
+    schema = expand(op.get("input_schema") or {}, comps)
+    if schema.get("type") == "object" and schema.get("properties"):
+        req_props = set(schema.get("required") or [])
+        for pname, pschema in (schema.get("properties") or {}).items():
+            slot = json_schema_to_comfy(expand(pschema, comps), pname)
+            (required if pname in req_props else optional)[_safe_id(pname)] = slot
+    elif schema:
+        # Non-object body → let the user paste it.
+        optional["body"] = ("STRING", {"default": "", "multiline": True})
+
+    return {"required": required, "optional": optional}
+
+
+def canonical_op_to_return_types(op: Mapping[str, Any],
+                                 components: Mapping[str, Any] | None = None
+                                 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Typed output slots + canonical (body, stats, headers) tail."""
+    comps = components or {}
+    base_types = ("STRING", "STRING", "STRING")
+    base_names = ("body", "stats", "headers")
+    schema = expand(op.get("output_schema") or {}, comps)
+    if schema.get("type") != "object" or not schema.get("properties"):
+        return base_types, base_names
+    typed: list[str] = []
+    names: list[str] = []
+    for pname, pschema in schema["properties"].items():
+        pschema = expand(pschema, comps)
+        t = pschema.get("type")
+        if t == "integer":
+            typed.append("INT")
+        elif t == "number":
+            typed.append("FLOAT")
+        elif t == "boolean":
+            typed.append("BOOLEAN")
+        else:
+            typed.append("STRING")
+        names.append(_safe_id(pname))
+    return tuple(typed) + base_types, tuple(names) + base_names
+
+
 def operation_to_return_types(operation: Mapping[str, Any],
                               components: Mapping[str, Any] | None = None
                               ) -> tuple[tuple[str, ...], tuple[str, ...]]:

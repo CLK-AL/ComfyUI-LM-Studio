@@ -186,13 +186,9 @@ def test_content_type_header(node, server_address, spec_paths):
 
 
 # --- Case 12 --------------------------------------------------------------
-# The bug-pinning xfail was flipped: the moment `node.py` forwards
-# max_tokens (upstream PR #1), this turns green. It stays xfail today
-# on our current master because that fix hasn't landed here.
-@pytest.mark.xfail(
-    strict=False,
-    reason="max_tokens forwarding: fixed by upstream PR #1 (not yet in our master)",
-)
+# Originally an xfail pinning the upstream max_tokens-not-forwarded bug.
+# We fixed it locally (node.py:_get_response_api now includes max_tokens
+# in the payload). If this ever regresses, this test fails loudly.
 def test_max_tokens_forwarded(node, server_address, spec_paths):
     chat_path = spec_paths["chat_completions"]
     _stub(chat_path, {"choices": [{"message": {"content": "x"}}], "usage": {}, "stats": {}})

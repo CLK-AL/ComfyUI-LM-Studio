@@ -45,7 +45,7 @@ def test_lm_studio_preset_registered():
     from comfyui_openapi_node import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
     assert "OpenAPINode" in NODE_CLASS_MAPPINGS
     # One auto-generated convenience class per operation in the preset.
-    assert any(k.startswith("OpenAPI_lm_studio_") for k in NODE_CLASS_MAPPINGS)
+    assert any(k.startswith("API_lm_studio_") for k in NODE_CLASS_MAPPINGS)
     assert any("lm-studio" in v for v in NODE_DISPLAY_NAME_MAPPINGS.values())
 
 

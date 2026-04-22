@@ -17,6 +17,7 @@ class Preset:
     title: str
     description: str
     spec: Callable[[], dict]
+    kind: str = "openapi"
 
 
 HERE = Path(__file__).resolve().parent
@@ -37,5 +38,23 @@ PRESETS: dict[str, Preset] = {
         title="LM Studio",
         description="Local LM Studio REST API (chat/completions + models).",
         spec=_file(API_ROOT / "openapi" / "spec" / "lm-studio.yaml"),
+        kind="openapi",
+    ),
+    "simple-chat": Preset(
+        name="simple-chat",
+        title="Simple Chat (AsyncAPI)",
+        description="Stub AsyncAPI 2.x showing publish/subscribe → WS nodes.",
+        spec=_file(API_ROOT / "asyncapi" / "spec" / "simple-chat.yaml"),
+        kind="asyncapi",
+    ),
+    "lm-studio-stream": Preset(
+        name="lm-studio-stream",
+        title="LM Studio — streaming (AsyncAPI)",
+        description=(
+            "AsyncAPI projection of LM Studio's SSE chat-completion stream. "
+            "Same JSON Schema as the OpenAPI preset, modelled as publish/subscribe."
+        ),
+        spec=_file(API_ROOT / "asyncapi" / "spec" / "lm-studio-stream.yaml"),
+        kind="asyncapi",
     ),
 }

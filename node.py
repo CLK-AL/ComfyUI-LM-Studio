@@ -144,8 +144,8 @@ class LMStudioNode:
             if image is not None and debug:
                 print("Warning: Image input is not supported with API mode. Install LM Studio SDK for image support.")
             return self._get_response_api(
-                system_prompt, user_message, model_id, server_address, 
-                temperature, thinking_tokens, debug
+                system_prompt, user_message, model_id, server_address,
+                temperature, max_tokens, thinking_tokens, debug
             )
 
     def _get_response_sdk(self, system_prompt: str, user_message: str, model_id: str,
@@ -221,8 +221,8 @@ class LMStudioNode:
                     print(f"Debug: Removed temporary file: {temp_path}")
 
     def _get_response_api(self, system_prompt: str, user_message: str, model_id: str,
-                         server_address: str, temperature: float, thinking_tokens: bool,
-                         debug: bool = False) -> Tuple[str, str]:
+                         server_address: str, temperature: float, max_tokens: int,
+                         thinking_tokens: bool, debug: bool = False) -> Tuple[str, str]:
         """Use the LM Studio API to get a response (text-only)"""
         headers = {"Content-Type": "application/json"}
 
@@ -233,6 +233,7 @@ class LMStudioNode:
                 {"role": "user", "content": user_message}
             ],
             "temperature": temperature,
+            "max_tokens": max_tokens,
             "stream": False
         }
 

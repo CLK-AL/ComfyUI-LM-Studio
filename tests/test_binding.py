@@ -91,7 +91,7 @@ def test_lm_studio_chat_completions_has_typed_inputs():
     # chatCompletions is one of two ops in api/openapi/spec/lm-studio.yaml
     cls_name = next(
         k for k in NODE_CLASS_MAPPINGS
-        if k.startswith("OpenAPI_lm_studio_") and "chat" in k.lower()
+        if k.startswith("API_lm_studio_") and "chat" in k.lower()
     )
     it = NODE_CLASS_MAPPINGS[cls_name].INPUT_TYPES()
     # Body schema has `model` + `messages` as required, others optional.
