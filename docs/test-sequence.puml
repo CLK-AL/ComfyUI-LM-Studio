@@ -1,0 +1,69 @@
+@startuml test-sequence
+!theme plain
+title How one pytest session flows (cold-start, no services pre-running)
+
+skinparam defaultFontName Inconsolata
+skinparam sequenceMessageAlign center
+
+actor        Developer           as DEV
+participant  "run-tests.sh\n/ .ps1"        as LAUNCHER
+participant  pytest              as PYTEST
+participant  "conftest\nwiremock_base"     as CONF
+participant  "tests/bootstrap.py" as BOOT
+participant  SDKMAN              as SDK
+participant  jbang               as JBG
+participant  "WireMock\n(embedded)"        as WM
+participant  "LMStudioNode\n(node.py)"     as NODE
+
+== 1. Launcher finds the ComfyUI venv ==
+DEV -> LAUNCHER : ./run-tests.sh
+LAUNCHER -> LAUNCHER : find venv: ./venv, ../venv,\n../../venv, $COMFYUI_VENV
+LAUNCHER -> PYTEST  : <venv>/python -m pytest
+
+== 2. Session fixture bootstraps everything ==
+PYTEST -> CONF : start wiremock_base session fixture
+CONF -> WM     : GET /__admin/mappings
+WM --> CONF    : Connection refused
+
+CONF -> BOOT   : ensure_jbang(pins.jbang)
+alt SDKMAN missing
+  BOOT -> BOOT : download sdkman-cli 5.22.4 zip\nfrom github.com/sdkman/sdkman-cli
+  BOOT -> SDK  : install to ~/.sdkman,\nseed var/platform, var/candidates
+end
+BOOT -> SDK    : sdk install jbang <pinned>\n(retry on truncated archive)
+SDK  --> BOOT  : ~/.sdkman/candidates/jbang/.../bin/jbang
+
+CONF -> BOOT   : fetch_openapi()
+alt upstream reachable
+  BOOT -> BOOT : GET lmstudio.ai/docs/openapi.yaml\n→ tests/.cache/lms-openapi.yaml
+else offline / 5xx
+  BOOT -> BOOT : use tests/lms-openapi.yaml\n(local fallback)
+end
+BOOT -> BOOT   : verify info.version prefix\n(if $LMS_API_VERSION_PREFIX set)
+BOOT --> CONF  : Path to spec
+
+CONF -> JBG    : jbang lm-studio.wiremock.jbang.kt start\n--spec <path> --port 8089
+JBG  -> WM     : start embedded Jetty,\nseed stubs from OpenAPI examples
+WM   --> JBG   : :8089 ready
+CONF -> WM     : poll GET /__admin/mappings
+WM   --> CONF  : 200
+
+== 3. Per-test scenario (autouse reset + per-test stub) ==
+loop every test_*
+  PYTEST -> WM   : POST /__admin/reset\n(_reset_mappings autouse)
+  PYTEST -> WM   : POST /__admin/mappings\n(scenario stub)
+  PYTEST -> NODE : get_response(\n  use_sdk=False,\n  server_address=http://127.0.0.1:8089,\n  ...)
+  NODE   -> WM   : POST /api/v0/chat/completions
+  WM     --> NODE: canned JSON body
+  NODE   --> PYTEST: (response, stats)
+  PYTEST -> PYTEST: assert
+end
+
+== 4. Session teardown ==
+PYTEST -> CONF : session end
+CONF   -> JBG  : SIGTERM process group\n(fallback SIGKILL after 10s)
+JBG    --> CONF: stopped
+
+PYTEST --> LAUNCHER : exit code
+LAUNCHER --> DEV    : "5 passed in …s"
+@enduml

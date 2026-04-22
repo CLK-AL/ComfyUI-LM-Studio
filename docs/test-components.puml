@@ -1,0 +1,68 @@
+@startuml test-components
+!theme plain
+title Test architecture — ComfyUI-LM-Studio (unit under test = the node)
+
+skinparam componentStyle rectangle
+skinparam defaultFontName Inconsolata
+skinparam linetype ortho
+
+package "Repo: ComfyUI-LM-Studio" {
+  component "node.py\n<<LMStudioNode>>" as NODE <<unit>>
+  component "tests/test_comfyui_mock.py" as TESTS
+  component "tests/conftest.py" as CONFTEST
+  component "tests/bootstrap.py" as BOOTSTRAP
+  component "lm-studio.wiremock.jbang.kt\n(Kotlin + Clikt)" as FACADE
+  artifact  "tests/lms-openapi.yaml\n(local fallback)"  as LOCALSPEC
+  artifact  ".sdkmanrc\n(java / kotlin / jbang pins)"   as PINS
+  component "run-tests.sh / .ps1\n(venv discovery)"     as LAUNCHER
+}
+
+package "User machine runtime" {
+  component "ComfyUI venv\n(Python)"       as VENV
+  component "SDKMAN"                       as SDKMAN
+  component "jbang + JDK 25"               as JBANG
+  component "WireMock 3.9.1\n(embedded Jetty)\n127.0.0.1:8089" as WM
+}
+
+cloud "lmstudio.ai/docs/openapi.yaml" as ONLINESPEC
+
+' --- not present in this architecture (makes the absence explicit) ---
+package "Not required at test time" #Pink {
+  component "ComfyUI runtime"   as COMFYUI <<absent>>
+  component "LM Studio server"  as LMS     <<absent>>
+}
+
+LAUNCHER   ..> VENV       : find & activate\n(./venv, ../venv, ../../venv)
+LAUNCHER   ..> TESTS      : python -m pytest
+TESTS      ..> NODE       : get_response(\n  use_sdk=False,\n  server_address=http://127.0.0.1:8089)
+TESTS      ..> WM         : POST /__admin/mappings\nPOST /__admin/reset
+CONFTEST   ..> BOOTSTRAP  : ensure_jbang()\nfetch_openapi()
+BOOTSTRAP  ..> SDKMAN     : install from GitHub\nrelease zip
+BOOTSTRAP  ..> JBANG      : spawn facade
+BOOTSTRAP  ..> ONLINESPEC : GET (retry)
+BOOTSTRAP  ..> LOCALSPEC  : fallback if offline
+PINS       --> SDKMAN     : versions
+JBANG      ..> FACADE     : run as jbang script
+FACADE     ..> WM         : embed Jetty,\nseed from OpenAPI
+NODE       ..> WM         : POST /api/v0/chat/completions
+
+note right of NODE
+  Imported as a plain Python module.
+  **No ComfyUI runtime needed** — tests
+  exercise the INPUT_TYPES contract
+  directly via get_response(...).
+end note
+
+note right of WM
+  Stands in for LM Studio.
+  **No LM Studio install needed** —
+  stubs are seeded from the LM Studio
+  OpenAPI document.
+end note
+
+note bottom of COMFYUI
+  Only the node module is imported;
+  ComfyUI's graph / executor is not
+  required for this unit test suite.
+end note
+@enduml
