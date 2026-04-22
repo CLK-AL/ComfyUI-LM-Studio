@@ -5,27 +5,47 @@ on:
     branches: [main, master, "claude/**"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Weekly (Mon 06:00 UTC) — drift check against upstream.
+    - cron: "0 6 * * 1"
 
 concurrency:
   group: tests-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  UPSTREAM_REPO: gabe-init/ComfyUI-LM-Studio
+  UPSTREAM_PR:  "1"  # Open PR with the node.py fixes we want to stay compatible with
+
 jobs:
   unit:
-    name: unit (pytest + jbang WireMock)
+    name: unit (${{ matrix.ref }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [current, upstream-pr]
+    continue-on-error: ${{ matrix.ref == 'upstream-pr' }}
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Overlay upstream PR node.py
+        if: matrix.ref == 'upstream-pr'
+        run: |
+          git fetch --no-tags https://github.com/${UPSTREAM_REPO}.git \
+              refs/pull/${UPSTREAM_PR}/head:pr_head
+          git checkout pr_head -- node.py __init__.py requirements.txt || true
+          git diff --stat HEAD -- node.py | head
 
       - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+        with: { python-version: "3.11" }
 
-      # Cache SDKMAN (~/.sdkman), the jbang dep/JDK cache (~/.jbang), and
-      # the Maven repo that jbang resolves into. First cold run installs
-      # everything; subsequent runs reuse the cache and start in ~20s.
+      # First cold run installs SDKMAN + jbang + JDK 25 + Maven deps;
+      # subsequent runs reuse the cache and boot in ~20s.
       - name: Cache SDKMAN + jbang + Maven
         uses: actions/cache@v4
         with:
@@ -37,8 +57,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-toolchain-
 
-      # Create a venv at ./venv so run-tests.sh's discovery picks it up
-      # the same way it would in a local ComfyUI custom-node layout.
       - name: Create venv and install runtime deps
         run: |
           python -m venv venv
@@ -46,7 +64,18 @@ jobs:
           ./venv/bin/pip install requests numpy Pillow pytest wiremock
 
       - name: Run unit tests
+        env:
+          API_COVERAGE_MARKDOWN: ${{ runner.temp }}/api-coverage.md
+          COVERAGE_LABEL: ${{ matrix.ref }}
         run: ./run-tests.sh -q
+
+      - name: Append API coverage to job summary
+        if: always()
+        run: |
+          f="${{ runner.temp }}/api-coverage.md"
+          if [ -s "$f" ]; then
+            cat "$f" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Show WireMock log on failure
         if: failure()
@@ -54,3 +83,34 @@ jobs:
           echo "::group::/tmp/wiremock.log"
           cat /tmp/wiremock.log 2>/dev/null || echo "(no log)"
           echo "::endgroup::"
+
+  drift:
+    name: upstream drift check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true   # advisory — never blocks
+
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Fetch upstream master
+        run: |
+          git remote add upstream https://github.com/${UPSTREAM_REPO}.git
+          git fetch --no-tags upstream master
+
+      - name: Compare canonical files
+        run: |
+          set +e
+          status=0
+          for f in node.py __init__.py requirements.txt; do
+            if ! git diff --exit-code upstream/master -- "$f" >/dev/null; then
+              echo "::warning file=$f::drift from upstream/master"
+              git --no-pager diff upstream/master -- "$f" | head -40
+              status=1
+            fi
+          done
+          if [ $status -eq 0 ]; then
+            echo "In sync with upstream/master on canonical files."
+          fi
+          exit 0   # never fail the job; warnings surface in the UI

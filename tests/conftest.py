@@ -117,11 +117,25 @@ def wiremock_base():
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
 
 
+_API_HITS: set[tuple[str, str]] = set()  # session-wide (method, path) pairs
+
+
 @pytest.fixture(autouse=True)
-def _reset_mappings(wiremock_base):
-    # WireMock 3.x global reset (mappings + journal).
-    requests.post(f"{wiremock_base}/__admin/reset", timeout=5)
+def _record_and_reset(wiremock_base):
+    # Run the test, then harvest the request journal into the session-wide
+    # hit set, then reset mappings + journal for the next test.
     yield
+    try:
+        j = requests.get(f"{wiremock_base}/__admin/requests", timeout=5).json()
+        for rq in j.get("requests", []):
+            url = rq["request"].get("url", "")
+            path = url.split("?", 1)[0]
+            if path.startswith("/__admin"):
+                continue
+            _API_HITS.add((rq["request"].get("method", "").upper(), path))
+    except Exception:
+        pass
+    requests.post(f"{wiremock_base}/__admin/reset", timeout=5)
 
 
 @pytest.fixture
@@ -133,3 +147,122 @@ def server_address(wiremock_base):
 def node():
     from node import LMStudioNode
     return LMStudioNode()
+
+
+# --- Spec-driven endpoints -----------------------------------------------
+# Single source of truth for paths: tests/lms-openapi.yaml. Parse once per
+# session. Tests reference paths by semantic key so endpoint renames
+# (e.g. /api/v0/… → /v1/…) only need one edit — the spec file itself.
+_SPEC_PATH = HERE / "lms-openapi.yaml"
+
+
+def _parse_openapi_paths(text: str) -> dict:
+    """Return a dict of {path: [methods]} from an OpenAPI YAML document.
+
+    Intentionally small — avoids a PyYAML dep. Only handles the shape we
+    care about: top-level `paths:` block with `  /path:` children and
+    per-method keys (`get:`, `post:`, …) one level deeper.
+    """
+    out: dict[str, list[str]] = {}
+    in_paths = False
+    current: str | None = None
+    for raw in text.splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        if raw.startswith("paths:"):
+            in_paths = True
+            continue
+        if in_paths and raw and not raw.startswith((" ", "\t")):
+            break  # left the paths block
+        if not in_paths:
+            continue
+        # path entries: 2-space indent, starts with '/', ends with ':'
+        if raw.startswith("  /") and raw.rstrip().endswith(":"):
+            current = raw.strip().rstrip(":").strip()
+            out[current] = []
+            continue
+        # method entries: 4-space indent under a path
+        stripped = raw.strip()
+        if current and raw.startswith("    ") and stripped.endswith(":"):
+            m = stripped.rstrip(":").strip().lower()
+            if m in {"get", "post", "put", "delete", "patch", "options", "head"}:
+                out[current].append(m)
+    return out
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """Print API coverage: OpenAPI spec vs. WireMock request journal.
+
+    If $API_COVERAGE_MARKDOWN is set, also writes a markdown summary
+    there — used by CI to feed $GITHUB_STEP_SUMMARY.
+    """
+    text = _SPEC_PATH.read_text() if _SPEC_PATH.exists() else ""
+    if not text:
+        return
+    paths = _parse_openapi_paths(text)
+    expected = {(m.upper(), p) for p, ms in paths.items() for m in ms}
+    if not expected:
+        return
+    covered = {k for k in expected if k in _API_HITS}
+    extra = {k for k in _API_HITS if k not in expected}
+    pct = 100.0 * len(covered) / len(expected)
+
+    tr = terminalreporter
+    tr.write_sep("=", "API coverage (LM Studio OpenAPI vs. WireMock hits)")
+    tr.write_line(f"covered: {len(covered)}/{len(expected)} ({pct:.0f}%)")
+    for method, path in sorted(expected):
+        mark = "OK" if (method, path) in covered else "--"
+        tr.write_line(f"  [{mark}] {method:<6} {path}")
+    if extra:
+        tr.write_line("requests to paths not in spec:")
+        for method, path in sorted(extra):
+            tr.write_line(f"  [+ ] {method:<6} {path}")
+
+    md_path = os.environ.get("API_COVERAGE_MARKDOWN")
+    if md_path:
+        try:
+            from pathlib import Path as _P
+            ref = os.environ.get("COVERAGE_LABEL", "tests")
+            lines = [
+                f"### API coverage — {ref}",
+                "",
+                f"**{len(covered)}/{len(expected)} ({pct:.0f}%)** of "
+                f"`tests/lms-openapi.yaml` paths hit.",
+                "",
+                "| status | method | path |",
+                "| :----: | :----- | :--- |",
+            ]
+            for m, p in sorted(expected):
+                ok = (m, p) in covered
+                lines.append(f"| {'✅' if ok else '—'} | `{m}` | `{p}` |")
+            if extra:
+                lines += ["", "**Requests to paths not in spec:**", ""]
+                for m, p in sorted(extra):
+                    lines.append(f"- `{m} {p}`")
+            _P(md_path).write_text("\n".join(lines) + "\n")
+        except Exception:  # noqa: BLE001
+            pass
+
+
+@pytest.fixture(scope="session")
+def spec_paths() -> dict:
+    """Semantic-key → path map, read from the LM Studio OpenAPI spec.
+
+    Keys we care about:
+      - "chat_completions" : first POST path containing 'chat' + 'completions'
+      - "models"           : first GET path containing 'models'
+      - "all"              : full {path: [methods]} mapping
+    """
+    text = _SPEC_PATH.read_text() if _SPEC_PATH.exists() else ""
+    paths = _parse_openapi_paths(text)
+    chat = next(
+        (p for p, ms in paths.items()
+         if "post" in ms and "chat" in p and "completions" in p),
+        "/api/v0/chat/completions",  # safe default if spec is empty
+    )
+    models = next(
+        (p for p, ms in paths.items()
+         if "get" in ms and "models" in p),
+        "/api/v0/models",
+    )
+    return {"chat_completions": chat, "models": models, "all": paths}
