@@ -19,6 +19,17 @@
 //DEPS org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3
 //DEPS org.jetbrains.kotlinx:kotlinx-datetime-jvm:0.6.1
 
+// --- Wire + Moshi (proto-generated messages + JSON projection) ---
+// `api/model/types.proto` is the source of truth. Wire generates KMP
+// Kotlin classes into a Gradle Compose module; at runtime we pull the
+// runtime + Moshi adapter so the already-generated classes (or the
+// hand-written mirror in api/common/) can be wire-encoded and
+// JSON-projected.
+//DEPS com.squareup.wire:wire-runtime-jvm:5.1.0
+//DEPS com.squareup.wire:wire-moshi-adapter:5.1.0
+//DEPS com.squareup.moshi:moshi:1.15.1
+//DEPS com.squareup.moshi:moshi-kotlin:1.15.1
+
 // --- RSocket ---
 //DEPS io.rsocket.kotlin:rsocket-core-jvm:0.20.0
 //DEPS io.rsocket.kotlin:rsocket-transport-ktor-websocket-server-jvm:0.20.0
