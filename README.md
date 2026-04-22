@@ -159,7 +159,7 @@ dependencies is required at test time:
   its relative import) is skipped.
 - **LM Studio is not needed.** An embedded [WireMock](https://wiremock.org/)
   server stands in for it. WireMock is launched from a jbang-backed
-  Kotlin script (`api/openapi/openapi.wiremock.jbang.kt`) seeded from LM
+  Kotlin script (`api/api.mock.jbang.kt openapi start`) seeded from LM
   Studio's OpenAPI document (online first, with
   `api/openapi/spec/lm-studio.yaml` as offline fallback).
 
@@ -235,7 +235,7 @@ reuse the cache (~20 s).
 
 ```bash
 source ~/.sdkman/bin/sdkman-init.sh && sdk env
-jbang api/openapi/openapi.wiremock.jbang.kt start --spec api/openapi/spec/lm-studio.yaml
+jbang api/api.mock.jbang.kt openapi start start --spec api/openapi/spec/lm-studio.yaml
 ```
 
 ## Contributing

@@ -21,7 +21,7 @@ script can be AOT-compiled to a native binary.
 - **Toolchain**: `sdk env` (reads `.sdkmanrc`) → `java=25.0.2-graal`
   (Oracle GraalVM for JDK 25), `kotlin=2.3.20`, `jbang=0.138.0`.
   Pins verified via `sdk list` on 2026-04-22.
-- **Facade**: `api/openapi/openapi.wiremock.jbang.kt` (jbang header declares deps:
+- **Facade**: `api/api.mock.jbang.kt openapi start` (jbang header declares deps:
   `org.wiremock:wiremock:3.9.1`, `com.github.ajalt.clikt:clikt-jvm:5.0.3`,
   `io.swagger.parser.v3:swagger-parser:2.1.22`).
 - **Stub source**: default `https://lmstudio.ai/docs/openapi.yaml`, override
@@ -38,10 +38,10 @@ Install & run:
 curl -s "https://get.sdkman.io" | bash  # one-time
 sdk env install                         # picks up .sdkmanrc
 curl -Ls https://sh.jbang.dev | bash    # one-time
-jbang api/openapi/openapi.wiremock.jbang.kt start       # listens on 127.0.0.1:8089
+jbang api/api.mock.jbang.kt openapi start start       # listens on 127.0.0.1:8089
 
 # (optional) AOT native binary:
-jbang --native api/openapi/openapi.wiremock.jbang.kt
+jbang --native api/api.mock.jbang.kt openapi start
 ./wiremock-lms start
 
 pip install pytest wiremock requests
@@ -92,10 +92,11 @@ Expected response shape (from the node's parser):
 
 ```
 .sdkmanrc                # java=25-graal, kotlin=2.3.2
+api/api.mock.jbang.kt    # unified Kotlin/Clikt facade
+                         # (openapi/asyncapi/mcp/rsocket subcommands)
 tests/
   TESTPLAN.md            # this file
-  openapi.wiremock.jbang.kt        # jbang Kotlin/Clikt facade seeding from LMS OpenAPI
-  conftest.py            # wiremock fixtures (skip if server absent)
+  conftest.py            # wiremock fixtures + auto-bootstrap
   test_api_mode.py       # cases 1–12
   stubs/                 # reusable stub builders (optional)
 ```
@@ -103,7 +104,7 @@ tests/
 ## CI hook
 
 Provision SDKMAN + jbang in the job, `sdk env`, launch the facade in the
-background (`jbang api/openapi/openapi.wiremock.jbang.kt start &`), wait for
+background (`jbang api/api.mock.jbang.kt openapi start start &`), wait for
 `127.0.0.1:8089`, then run `pytest -q`. A `WIREMOCK_URL` env var lets the
 same tests target a locally- or CI-started server.
 

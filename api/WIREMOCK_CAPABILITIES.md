@@ -19,7 +19,7 @@ file in `/api/<kind>/spec/` and the jbang facade will honor them.
 | Proxying + record      | **full** | `proxyAllTo` + `record` → capture real traffic as mappings      |
 | Fault injection        | **full** | delays, MALFORMED_RESPONSE_CHUNK, CONNECTION_RESET_BY_PEER     |
 | HTTP/2 + TLS           | **full** | ALPN on by default in 3.x                                       |
-| OpenAPI spec loading   | partial  | **not native** — we parse the spec in Kotlin (`swagger-parser`) and programmatically stub each path. That's the job of `/api/openapi/openapi.wiremock.jbang.kt`. |
+| OpenAPI spec loading   | partial  | **not native** — we parse the spec in Kotlin (`swagger-parser`) and programmatically stub each path. That's the job of `/api/api.mock.jbang.kt (openapi start)`. |
 | SSE (text/event-stream)| partial  | Works as a plain HTTP stream when the stub response is a long body — but no first-class `event:` / `data:` framing helpers. Usually we write a small chunked handler. |
 
 ## Extensions (separate jars / repos)

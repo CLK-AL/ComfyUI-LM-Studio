@@ -3,7 +3,7 @@
 The session-scoped `wiremock_base` fixture:
  1. Ensures SDKMAN + jbang are installed (see tests/bootstrap.py).
  2. Resolves the LM Studio OpenAPI spec: online first, local fallback.
- 3. Launches api/openapi/openapi.wiremock.jbang.kt and waits for readiness.
+ 3. Launches api/api.mock.jbang.kt (openapi start) and waits for readiness.
  4. Yields the base URL; tears the facade down at session end.
 
 Override knobs:
@@ -30,7 +30,7 @@ from wiremock.constants import Config
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 API_ROOT = REPO / "api"
-SCRIPT = API_ROOT / "openapi" / "openapi.wiremock.jbang.kt"
+SCRIPT = API_ROOT / "api.mock.jbang.kt"
 LOCAL_SPEC = API_ROOT / "openapi" / "spec" / "lm-studio.yaml"
 
 WIREMOCK_URL = os.environ.get("WIREMOCK_URL", "http://127.0.0.1:8089")
@@ -67,7 +67,8 @@ def _launch_jbang(url: str, jbang_bin: Path, spec: Path) -> subprocess.Popen:
     host, port = u.hostname or "127.0.0.1", u.port or 8089
     if not _port_free(host, port):
         raise RuntimeError(f"{host}:{port} in use but not serving WireMock")
-    cmd = [str(jbang_bin), str(SCRIPT), "start",
+    # Nested subcommand tree: `api-mock openapi start …`
+    cmd = [str(jbang_bin), str(SCRIPT), "openapi", "start",
            "--spec", str(spec), "--host", host, "--port", str(port)]
     logf = open("/tmp/wiremock.log", "wb")
     proc = subprocess.Popen(
