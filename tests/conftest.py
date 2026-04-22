@@ -3,7 +3,7 @@
 The session-scoped `wiremock_base` fixture:
  1. Ensures SDKMAN + jbang are installed (see tests/bootstrap.py).
  2. Resolves the LM Studio OpenAPI spec: online first, local fallback.
- 3. Launches tests/lm-studio.wiremock.jbang.kt and waits for readiness.
+ 3. Launches tests/openapi.wiremock.jbang.kt and waits for readiness.
  4. Yields the base URL; tears the facade down at session end.
 
 Override knobs:
@@ -29,7 +29,7 @@ from wiremock.constants import Config
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-SCRIPT = HERE / "lm-studio.wiremock.jbang.kt"
+SCRIPT = HERE / "openapi.wiremock.jbang.kt"
 
 WIREMOCK_URL = os.environ.get("WIREMOCK_URL", "http://127.0.0.1:8089")
 SKIP_BOOTSTRAP = os.environ.get("SKIP_BOOTSTRAP") == "1"

@@ -11,7 +11,7 @@ package "Repo: ComfyUI-LM-Studio" {
   component "tests/test_comfyui_mock.py" as TESTS
   component "tests/conftest.py" as CONFTEST
   component "tests/bootstrap.py" as BOOTSTRAP
-  component "lm-studio.wiremock.jbang.kt\n(Kotlin + Clikt)" as FACADE
+  component "openapi.wiremock.jbang.kt\n(Kotlin + Clikt)" as FACADE
   artifact  "tests/lms-openapi.yaml\n(local fallback)"  as LOCALSPEC
   artifact  ".sdkmanrc\n(java / kotlin / jbang pins)"   as PINS
   component "run-tests.sh / .ps1\n(venv discovery)"     as LAUNCHER

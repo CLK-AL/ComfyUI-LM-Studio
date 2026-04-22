@@ -42,7 +42,7 @@ end
 BOOT -> BOOT   : verify info.version prefix\n(if $LMS_API_VERSION_PREFIX set)
 BOOT --> CONF  : Path to spec
 
-CONF -> JBG    : jbang lm-studio.wiremock.jbang.kt start\n--spec <path> --port 8089
+CONF -> JBG    : jbang openapi.wiremock.jbang.kt start\n--spec <path> --port 8089
 JBG  -> WM     : start embedded Jetty,\nseed stubs from OpenAPI examples
 WM   --> JBG   : :8089 ready
 CONF -> WM     : poll GET /__admin/mappings
