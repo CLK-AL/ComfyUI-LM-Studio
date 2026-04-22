@@ -30,6 +30,17 @@
 //DEPS com.squareup.moshi:moshi:1.15.1
 //DEPS com.squareup.moshi:moshi-kotlin:1.15.1
 
+// --- Jackson (idiomatic JVM JSON tree) ---
+// `common/` stays KMP-portable by declaring kotlinx.serialization.json
+// types in its KClassEnum rows. JVM consumers (Spring JDBC, servlet
+// handlers, Jackson-native REST libs) resolve the paired JClassEnum
+// entry to Jackson's `JsonNode` / `ObjectNode` / `ArrayNode` tree —
+// the idiomatic Java JSON shape. Declared here so JVM-only call sites
+// can cast through `kclass.jclass.jclass` at runtime.
+//DEPS com.fasterxml.jackson.core:jackson-databind:2.17.2
+//DEPS com.fasterxml.jackson.module:jackson-module-kotlin:2.17.2
+//DEPS com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.17.2
+
 // --- iCalendar + vCard parsing (string/file → jCal/jCard) ---
 //DEPS org.mnode.ical4j:ical4j:4.0.5
 //DEPS com.googlecode.ez-vcard:ez-vcard:0.12.1

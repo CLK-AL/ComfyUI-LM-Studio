@@ -99,45 +99,48 @@ enum class KClassEnum(
  *  other Java reflection-driven call sites hand us `Class<*>` handles,
  *  not `KClass<*>` — this enum lists the ones we recognise. */
 /** Closed set of Java `Class<*>` handles FormatType rows resolve to.
- *  JSON entries use Jackson's `JsonNode` tree (the idiomatic Java JSON
- *  shape) — distinct from the Kotlin side, which prefers
- *  `kotlinx.serialization.json.JsonObject` / `JsonArray`. Strings
- *  carry the FQN literally so consumers without a classloader can
- *  still match. Jackson classes use string literals so this file
- *  doesn't have to compile against `com.fasterxml.jackson` on the
- *  Kotlin-only path. */
+ *  JSON entries resolve to Jackson's tree (`JsonNode` / `ObjectNode`
+ *  / `ArrayNode` — `com.fasterxml.jackson.databind`), the idiomatic
+ *  JVM JSON shape. Kotlin `common/` code stays KMP-portable by
+ *  holding `kotlinx.serialization.json.JsonObject` / `JsonArray` on
+ *  the KClass side; the paired JClassEnum value is how JVM-only
+ *  consumers (Spring JDBC, Jackson-native handlers) materialise the
+ *  tree at runtime. Jackson is optional — omit the dep and the FQN
+ *  strings still work, but `Class.forName` / reflection lookups will
+ *  of course fail until the jar is on the classpath. */
 enum class JClassEnum(val jclass: Class<*>, val fqn: String) {
-    STRING         (java.lang.String::class.java,       "java.lang.String"),
-    INTEGER        (java.lang.Integer::class.java,      "java.lang.Integer"),
-    LONG           (java.lang.Long::class.java,         "java.lang.Long"),
-    FLOAT          (java.lang.Float::class.java,        "java.lang.Float"),
-    DOUBLE         (java.lang.Double::class.java,       "java.lang.Double"),
-    BOOLEAN        (java.lang.Boolean::class.java,      "java.lang.Boolean"),
-    BIG_INTEGER    (java.math.BigInteger::class.java,   "java.math.BigInteger"),
-    BIG_DECIMAL    (java.math.BigDecimal::class.java,   "java.math.BigDecimal"),
-    BYTE_ARRAY     (ByteArray::class.java,              "byte[]"),
-    LOCAL_DATE     (java.time.LocalDate::class.java,    "java.time.LocalDate"),
-    LOCAL_TIME     (java.time.LocalTime::class.java,    "java.time.LocalTime"),
-    LOCAL_DATETIME (java.time.LocalDateTime::class.java,"java.time.LocalDateTime"),
-    INSTANT        (java.time.Instant::class.java,      "java.time.Instant"),
-    OFFSET_DATETIME(java.time.OffsetDateTime::class.java,"java.time.OffsetDateTime"),
-    ZONED_DATETIME (java.time.ZonedDateTime::class.java,"java.time.ZonedDateTime"),
-    ZONE_ID        (java.time.ZoneId::class.java,       "java.time.ZoneId"),
-    DURATION       (java.time.Duration::class.java,     "java.time.Duration"),
-    UUID           (java.util.UUID::class.java,         "java.util.UUID"),
-    URI            (java.net.URI::class.java,           "java.net.URI"),
-    URL            (java.net.URL::class.java,           "java.net.URL"),
-    // Jackson JSON tree — ObjectNode / ArrayNode implement JsonNode.
-    JSON_NODE      (java.lang.Object::class.java,       "com.fasterxml.jackson.databind.JsonNode"),
-    OBJECT_NODE    (java.lang.Object::class.java,       "com.fasterxml.jackson.databind.node.ObjectNode"),
-    ARRAY_NODE     (java.lang.Object::class.java,       "com.fasterxml.jackson.databind.node.ArrayNode");
+    STRING         (java.lang.String::class.java,                           "java.lang.String"),
+    INTEGER        (java.lang.Integer::class.java,                          "java.lang.Integer"),
+    LONG           (java.lang.Long::class.java,                             "java.lang.Long"),
+    FLOAT          (java.lang.Float::class.java,                            "java.lang.Float"),
+    DOUBLE         (java.lang.Double::class.java,                           "java.lang.Double"),
+    BOOLEAN        (java.lang.Boolean::class.java,                          "java.lang.Boolean"),
+    BIG_INTEGER    (java.math.BigInteger::class.java,                       "java.math.BigInteger"),
+    BIG_DECIMAL    (java.math.BigDecimal::class.java,                       "java.math.BigDecimal"),
+    BYTE_ARRAY     (ByteArray::class.java,                                  "byte[]"),
+    LOCAL_DATE     (java.time.LocalDate::class.java,                        "java.time.LocalDate"),
+    LOCAL_TIME     (java.time.LocalTime::class.java,                        "java.time.LocalTime"),
+    LOCAL_DATETIME (java.time.LocalDateTime::class.java,                    "java.time.LocalDateTime"),
+    INSTANT        (java.time.Instant::class.java,                          "java.time.Instant"),
+    OFFSET_DATETIME(java.time.OffsetDateTime::class.java,                   "java.time.OffsetDateTime"),
+    ZONED_DATETIME (java.time.ZonedDateTime::class.java,                    "java.time.ZonedDateTime"),
+    ZONE_ID        (java.time.ZoneId::class.java,                           "java.time.ZoneId"),
+    DURATION       (java.time.Duration::class.java,                         "java.time.Duration"),
+    UUID           (java.util.UUID::class.java,                             "java.util.UUID"),
+    URI            (java.net.URI::class.java,                               "java.net.URI"),
+    URL            (java.net.URL::class.java,                               "java.net.URL"),
+    // Jackson JSON tree (JVM JSON lib). `ObjectNode` / `ArrayNode`
+    // extend `JsonNode`; kept as three distinct entries so the bridge
+    // lands on the narrowest type available.
+    JSON_NODE      (com.fasterxml.jackson.databind.JsonNode::class.java,    "com.fasterxml.jackson.databind.JsonNode"),
+    OBJECT_NODE    (com.fasterxml.jackson.databind.node.ObjectNode::class.java, "com.fasterxml.jackson.databind.node.ObjectNode"),
+    ARRAY_NODE     (com.fasterxml.jackson.databind.node.ArrayNode::class.java,  "com.fasterxml.jackson.databind.node.ArrayNode");
 
     companion object {
         fun fromJClass(jcls: Class<*>): JClassEnum? =
-            entries.firstOrNull { it.jclass == jcls && it !in JACKSON_ENTRIES }
+            entries.firstOrNull { it.jclass == jcls }
         fun fromFqn(fqn: String): JClassEnum? =
             entries.firstOrNull { it.fqn == fqn }
-        private val JACKSON_ENTRIES = setOf(JSON_NODE, OBJECT_NODE, ARRAY_NODE)
     }
 }
 
