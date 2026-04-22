@@ -86,44 +86,23 @@
 //SOURCES common/ComponentTables.kt
 //SOURCES common/SqlTypes.kt
 //SOURCES common/FormatType.kt
+//SOURCES common/JClassKClass.kt
 //SOURCES common/JdbcExposed.kt
 //SOURCES common/IcsVcfParser.kt
 //SOURCES common/FakeProvider.kt
 //SOURCES common/DatafakerProvider.kt
-//SOURCES common/JClassKClass.kt
+//SOURCES common/APIMock.kt
 //SOURCES openapi/Wiremock.kt
 //SOURCES asyncapi/AsyncApiServer.kt
 //SOURCES mcp/McpServer.kt
 //SOURCES rsocket/RSocketServer.kt
 //SOURCES jdbc/JdbcServer.kt
 
-// One facade to mock every protocol an app ever speaks. A single
-// `jbang api/api.mock.jbang.kt` process can host WireMock stubs
-// alongside Ktor WS + SSE + MCP + RSocket so you trace a multi-
-// protocol target (LM Studio REST + SSE streaming, for example)
-// in one log file.
-//
-// Subcommand tree:
-//   openapi  start   — WireMock from an OpenAPI document
-//   asyncapi echo    — Ktor WS + SSE echo server
-//   mcp      serve   — JSON-RPC MCP mock over SSE
-//   rsocket  serve   — RSocket (skeleton)
-//
-// Each subcommand defaults to its own port so they can run side by
-// side: openapi 8089, asyncapi 8090, mcp 8091, rsocket 8094.
+// Thin jbang shell around `common/APIMock.kt`. All Clikt wiring, the
+// root command, and the subcommand tree live under `common/` so the
+// same entry point can be reused from a KMP Compose Multiplatform
+// module without copying the group/subcommand layout. This file only
+// declares the JVM stack (jbang //DEPS + //SOURCES) and forwards
+// process args to `apiMockMain`.
 
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.main
-import com.github.ajalt.clikt.core.subcommands
-
-class ApiMockRoot : CliktCommand(name = "api-mock") {
-    override fun run() = Unit
-}
-
-fun main(args: Array<String>) = ApiMockRoot().subcommands(
-    OpenApiGroup().subcommands(OpenApiStart()),
-    AsyncApiGroup().subcommands(AsyncApiEcho()),
-    McpGroup().subcommands(McpServe()),
-    RSocketGroup().subcommands(RSocketServe()),
-    JdbcGroup().subcommands(JdbcServe()),
-).main(args)
+fun main(args: Array<String>) = apiMockMain(args)
