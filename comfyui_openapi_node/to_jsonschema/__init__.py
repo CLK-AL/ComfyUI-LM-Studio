@@ -46,8 +46,10 @@ class OperationSchema(TypedDict, total=False):
 
 
 class Canonical(TypedDict, total=False):
-    title:       str
-    version:     str
-    server_url:  str
-    components:  dict           # JSON Schema components (shared across ops)
-    operations:  list[OperationSchema]
+    title:         str
+    version:       str
+    server_url:    str
+    components:    dict           # JSON Schema components (shared across ops)
+    security_schemes: dict        # {name: scheme_def} from components.securitySchemes
+    default_security: list        # top-level `security:` requirements
+    operations:    list[OperationSchema]

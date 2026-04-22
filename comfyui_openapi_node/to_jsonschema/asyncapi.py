@@ -74,10 +74,13 @@ def convert(spec: Mapping) -> Canonical:
         if isinstance(first, Mapping):
             first_server_url = first.get("url", "")
 
+    components = dict(spec.get("components") or {})
     return Canonical(
         title=((spec.get("info") or {}).get("title") or ""),
         version=((spec.get("info") or {}).get("version") or ""),
         server_url=first_server_url,
-        components=dict(spec.get("components") or {}),
+        components=components,
+        security_schemes=dict(components.get("securitySchemes") or {}),
+        default_security=list(spec.get("security") or []),
         operations=ops,
     )

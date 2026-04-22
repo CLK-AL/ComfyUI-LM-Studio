@@ -22,6 +22,8 @@ import json
 import logging
 from typing import Any, Dict, Type
 
+from typing import Mapping
+
 from .binding import (
     canonical_op_to_input_types,
     canonical_op_to_return_types,
@@ -29,6 +31,7 @@ from .binding import (
 from .node import OpenAPINode
 from .presets import PRESETS
 from .protocols import get_executor
+from .security import apply as apply_security
 from .to_jsonschema import Canonical, OperationSchema
 from .to_jsonschema import asyncapi as conv_asyncapi
 from .to_jsonschema import openapi  as conv_openapi
@@ -62,6 +65,19 @@ def _make_typed_subclass(preset_name: str, canon: Canonical,
     method_default   = op.get("verb") or "POST"
     path_default     = op.get("path") or "/"
 
+    # Security surface for this operation: op-level `security` overrides
+    # top-level; fall back to every scheme declared in the spec so the
+    # user still has a choice when the op has no explicit requirement.
+    all_schemes = dict(canon.get("security_schemes") or {})
+    op_reqs = op.get("raw", {}).get("security") or canon.get("default_security") or []
+    op_scheme_names: list[str] = []
+    for req in op_reqs:
+        if isinstance(req, Mapping):
+            for n in req.keys():
+                if n in all_schemes and n not in op_scheme_names:
+                    op_scheme_names.append(n)
+    scheme_choices = ([""] + op_scheme_names) if op_scheme_names else ([""] + list(all_schemes.keys()))
+
     class _Typed(OpenAPINode):  # type: ignore[misc]
         CATEGORY = f"API/{preset_name}"
         FUNCTION = "invoke_typed"
@@ -69,17 +85,19 @@ def _make_typed_subclass(preset_name: str, canon: Canonical,
         RETURN_NAMES = return_names
 
         @classmethod
-        def INPUT_TYPES(cls, _it=input_types, _server=server_url_default):
+        def INPUT_TYPES(cls, _it=input_types, _server=server_url_default,
+                         _choices=scheme_choices):
             it = {"required": dict(_it["required"]),
                   "optional": dict(_it["optional"])}
             it["optional"]["server_url"]       = ("STRING", {"default": _server})
-            it["optional"]["auth_scheme"]      = ("STRING", {"default": ""})
+            it["optional"]["auth_scheme"]      = (list(_choices),)
             it["optional"]["credentials_json"] = ("STRING", {"default": "{}", "multiline": True})
             return it
 
         def invoke_typed(self, _op=op, _kind=kind, _protocol=protocol_default,
                          _method=method_default, _path=path_default,
                          _server=server_url_default,
+                         _schemes=all_schemes,
                          server_url="", auth_scheme="",
                          credentials_json="{}", **values):
             try:
@@ -103,11 +121,15 @@ def _make_typed_subclass(preset_name: str, canon: Canonical,
                     # template placeholders if any.
                     exec_op["parameters"] = _op.get("parameters") or []
 
+                # Resolve the selected auth scheme (dropdown) from the
+                # spec and hand it to the executor. Empty string → no auth.
+                scheme = _schemes.get(auth_scheme) if auth_scheme else None
+
                 executor = get_executor(_protocol)
                 resp = executor(
                     operation=exec_op, method=_method, server_url=chosen_server,
                     path=_path, values=call_values,
-                    auth_scheme=None, credentials=creds,
+                    auth_scheme=scheme, credentials=creds,
                 )
 
                 try:

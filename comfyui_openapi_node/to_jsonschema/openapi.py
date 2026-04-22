@@ -53,10 +53,13 @@ def convert(spec: Mapping) -> Canonical:
                 raw=dict(op),
             ))
 
+    components = dict(spec.get("components") or {})
     return Canonical(
         title=((spec.get("info") or {}).get("title") or ""),
         version=((spec.get("info") or {}).get("version") or ""),
         server_url=((spec.get("servers") or [{}])[0] or {}).get("url", ""),
-        components=dict(spec.get("components") or {}),
+        components=components,
+        security_schemes=dict(components.get("securitySchemes") or {}),
+        default_security=list(spec.get("security") or []),
         operations=ops,
     )

@@ -1,0 +1,84 @@
+openapi: 3.0.3
+info:
+  title: Secured demo (every common security scheme)
+  version: "0.1.0"
+  description: >
+    Stub OpenAPI exercising every scheme family the node supports:
+    apiKey (header / query / cookie), http basic, http bearer
+    (plain + JWT), oauth2 client_credentials, openIdConnect.
+    No real server — each path is here only so the binding layer has
+    an operation to attach the scheme to.
+
+servers:
+  - url: http://127.0.0.1:8089
+
+security: []        # operations opt in explicitly below
+
+paths:
+  /whoami/apikey:
+    get:
+      operationId: whoAmIWithApiKey
+      security: [{ApiKeyHeader: []}]
+      responses: {'200': {description: ok}}
+
+  /whoami/basic:
+    get:
+      operationId: whoAmIWithBasic
+      security: [{BasicAuth: []}]
+      responses: {'200': {description: ok}}
+
+  /whoami/bearer:
+    get:
+      operationId: whoAmIWithBearer
+      security: [{BearerAuth: []}]
+      responses: {'200': {description: ok}}
+
+  /whoami/jwt:
+    get:
+      operationId: whoAmIWithJwt
+      security: [{JwtAuth: []}]
+      responses: {'200': {description: ok}}
+
+  /whoami/oauth2:
+    get:
+      operationId: whoAmIWithOAuth2
+      security: [{OAuth2CC: [read]}]
+      responses: {'200': {description: ok}}
+
+  /whoami/oidc:
+    get:
+      operationId: whoAmIWithOIDC
+      security: [{OpenIDConnect: []}]
+      responses: {'200': {description: ok}}
+
+components:
+  securitySchemes:
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+    ApiKeyQuery:
+      type: apiKey
+      in: query
+      name: api_key
+    BasicAuth:
+      type: http
+      scheme: basic
+    BearerAuth:
+      type: http
+      scheme: bearer
+    JwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    OAuth2CC:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: http://127.0.0.1:8089/oauth/token
+          scopes:
+            read:  Read access
+            write: Write access
+    OpenIDConnect:
+      type: openIdConnect
+      openIdConnectUrl: http://127.0.0.1:8089/.well-known/openid-configuration
