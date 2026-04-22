@@ -198,7 +198,14 @@ OpenAPI spec. Subsequent runs skip the install. `SKIP_BOOTSTRAP=1`
 requires a pre-running WireMock at `$WIREMOCK_URL` (default
 `http://127.0.0.1:8089`).
 
-For a one-off manual launch of the WireMock facade:
+### CI
+
+`.github/workflows/tests.yml` runs the same `./run-tests.sh` on every
+push and PR. It caches `~/.sdkman`, `~/.jbang`, and `~/.m2/repository`
+so the first run installs everything (~3 min) and subsequent runs
+reuse the cache (~20 s).
+
+### Manual facade launch
 
 ```bash
 source ~/.sdkman/bin/sdkman-init.sh && sdk env
