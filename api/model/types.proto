@@ -61,6 +61,10 @@ enum JsonFormat {
   JF_FLOAT         = 23;
   JF_DOUBLE        = 24;
   JF_ENUM          = 25;
+  JF_SEARCH        = 26;
+  JF_HIDDEN        = 27;
+  JF_MONTH         = 28;
+  JF_WEEK          = 29;
 }
 
 // Numeric values mirror java.sql.Types exactly. Negative values
@@ -122,6 +126,15 @@ enum HtmlInputType {
   HI_CHECKBOX       = 10;
   HI_FILE           = 11;
   HI_PASSWORD       = 12;
+  HI_RADIO          = 13;
+  HI_RANGE          = 14;
+  HI_SEARCH         = 15;
+  HI_MONTH          = 16;
+  HI_WEEK           = 17;
+  HI_HIDDEN         = 18;
+  HI_TEXTAREA       = 19;   // <textarea>
+  HI_SELECT         = 20;   // <select>
+  HI_SELECT_MULTI   = 21;   // <select multiple>
 }
 
 enum ComfyType {
@@ -138,15 +151,23 @@ enum ComposeWidget {
   CW_TEXT_FIELD         = 1;
   CW_OUTLINED_TEXT_FIELD= 2;
   CW_PASSWORD_FIELD     = 3;
-  CW_COLOR_PICKER       = 4;
-  CW_DATE_PICKER        = 5;
-  CW_TIME_PICKER        = 6;
-  CW_DATETIME_PICKER    = 7;
-  CW_FILE_PICKER        = 8;
-  CW_MAP_PICKER         = 9;
-  CW_SLIDER             = 10;
-  CW_SWITCH             = 11;
-  CW_DROPDOWN_MENU      = 12;
+  CW_SEARCH_FIELD       = 4;
+  CW_COLOR_PICKER       = 5;
+  CW_DATE_PICKER        = 6;
+  CW_TIME_PICKER        = 7;
+  CW_DATETIME_PICKER    = 8;
+  CW_MONTH_PICKER       = 9;
+  CW_WEEK_PICKER        = 10;
+  CW_FILE_PICKER        = 11;
+  CW_MAP_PICKER         = 12;
+  CW_SLIDER             = 13;
+  CW_RANGE_SLIDER       = 14;
+  CW_SWITCH             = 15;
+  CW_CHECKBOX           = 16;
+  CW_CHECKBOX_GROUP     = 17;
+  CW_RADIO_GROUP        = 18;
+  CW_DROPDOWN_MENU      = 19;
+  CW_HIDDEN_FIELD       = 20;
 }
 
 // ----- mapping message --------------------------------------------------

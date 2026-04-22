@@ -1,5 +1,5 @@
 {
-  "_note": "Shared fixture for the FormatType 5-way bridge. The Python test (tests/test_format_type.py) and the Kotlin test (planned, reads the same file) both assert every row matches.",
+  "_note": "Shared fixture for the FormatType 5-way bridge. The Python test (tests/test_format_type.py) and the Kotlin test (planned, reads the same file) both assert every row matches. Generated from comfyui_openapi_node/format_type.py \u2014 re-run the regeneration script if enums change.",
   "rows": [
     {
       "name": "TEXT",
@@ -17,7 +17,7 @@
       "json_format": "textarea",
       "sql_type": "LONGVARCHAR",
       "kclass": "kotlin.String",
-      "html_input": "text",
+      "html_input": "textarea",
       "comfy": "STRING",
       "sql_type_code": -1
     },
@@ -58,6 +58,16 @@
       "sql_type": "VARCHAR",
       "kclass": "kotlin.String",
       "html_input": "url",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "SEARCH",
+      "json_type": "string",
+      "json_format": "search",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "search",
       "comfy": "STRING",
       "sql_type_code": 12
     },
@@ -110,6 +120,26 @@
       "html_input": "datetime-local",
       "comfy": "STRING",
       "sql_type_code": 93
+    },
+    {
+      "name": "MONTH",
+      "json_type": "string",
+      "json_format": "month",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "month",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
+      "name": "WEEK",
+      "json_type": "string",
+      "json_format": "week",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "week",
+      "comfy": "STRING",
+      "sql_type_code": 12
     },
     {
       "name": "DURATION",
@@ -192,12 +222,22 @@
       "sql_type_code": 2004
     },
     {
+      "name": "HIDDEN",
+      "json_type": "string",
+      "json_format": "hidden",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "hidden",
+      "comfy": "STRING",
+      "sql_type_code": 12
+    },
+    {
       "name": "GEOJSON",
       "json_type": "object",
       "json_format": "geojson",
       "sql_type": "OTHER",
       "kclass": "kotlinx.serialization.json.JsonObject",
-      "html_input": "text",
+      "html_input": "textarea",
       "comfy": "STRING",
       "sql_type_code": 1111
     },
@@ -207,7 +247,7 @@
       "json_format": "json",
       "sql_type": "OTHER",
       "kclass": "kotlinx.serialization.json.JsonObject",
-      "html_input": "text",
+      "html_input": "textarea",
       "comfy": "STRING",
       "sql_type_code": 1111
     },
@@ -217,7 +257,7 @@
       "json_format": "json",
       "sql_type": "ARRAY",
       "kclass": "kotlinx.serialization.json.JsonArray",
-      "html_input": "text",
+      "html_input": "textarea",
       "comfy": "STRING",
       "sql_type_code": 2003
     },
@@ -262,7 +302,27 @@
       "sql_type_code": 8
     },
     {
+      "name": "RANGE",
+      "json_type": "number",
+      "json_format": null,
+      "sql_type": "REAL",
+      "kclass": "kotlin.Float",
+      "html_input": "range",
+      "comfy": "FLOAT",
+      "sql_type_code": 7
+    },
+    {
       "name": "BOOL",
+      "json_type": "boolean",
+      "json_format": null,
+      "sql_type": "BOOLEAN",
+      "kclass": "kotlin.Boolean",
+      "html_input": "checkbox",
+      "comfy": "BOOLEAN",
+      "sql_type_code": 16
+    },
+    {
+      "name": "CHECKBOX",
       "json_type": "boolean",
       "json_format": null,
       "sql_type": "BOOLEAN",
@@ -277,9 +337,29 @@
       "json_format": "enum",
       "sql_type": "VARCHAR",
       "kclass": "kotlin.String",
-      "html_input": "text",
+      "html_input": "select",
       "comfy": "COMBO",
       "sql_type_code": 12
+    },
+    {
+      "name": "RADIO",
+      "json_type": "string",
+      "json_format": "enum",
+      "sql_type": "VARCHAR",
+      "kclass": "kotlin.String",
+      "html_input": "radio",
+      "comfy": "COMBO",
+      "sql_type_code": 12
+    },
+    {
+      "name": "MULTI_SELECT",
+      "json_type": "array",
+      "json_format": "enum",
+      "sql_type": "ARRAY",
+      "kclass": "kotlin.collections.List",
+      "html_input": "select[multiple]",
+      "comfy": "COMBO",
+      "sql_type_code": 2003
     }
   ],
   "json_schema_dispatch": [
