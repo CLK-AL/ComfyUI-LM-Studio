@@ -4,7 +4,7 @@ Both Python (`al.clk.api.naming`) and Kotlin
 (`api/common/Naming.kt`) consume `tests/fixtures/naming-cases.json`.
 This test exercises the Python side against every case; the Kotlin
 compile test (tests/test_jbang_scripts_compile.py) confirms the
-Kotlin mirror is included as //SOURCES in api/api.mock.jbang.kt so
+Kotlin mirror is included as //SOURCES in api/src/jbangMain/ApiMock.jbang.kt so
 the same file is the contract both implementations meet.
 """
 from __future__ import annotations
@@ -75,10 +75,10 @@ def test_node_display_cases_match_fixture():
 
 
 def test_kotlin_mirror_is_sourced_into_api_mock():
-    # Parity contract: api/api.mock.jbang.kt includes the shared Kotlin
+    # Parity contract: api/src/jbangMain/ApiMock.jbang.kt includes the shared Kotlin
     # naming file so `jbang info classpath` produces a binary that
     # ships the mirror next to the Python side.
-    kt = (REPO / "api" / "api.mock.jbang.kt").read_text()
+    kt = (REPO / "api" / "src" / "jbangMain" / "ApiMock.jbang.kt").read_text()
     assert "commonMain/kotlin/al/clk/api/Naming.kt" in kt, \
         "shared naming Kotlin file must be //SOURCES-included"
     assert "commonMain/kotlin/al/clk/api/ComponentTables.kt" in kt

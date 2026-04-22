@@ -1,4 +1,4 @@
-"""Verify the unified jbang facade (api/api.mock.jbang.kt) resolves deps
+"""Verify the unified jbang facade (api/src/jbangMain/ApiMock.jbang.kt) resolves deps
 and compiles.
 
 `jbang info classpath <file>` runs the full resolve + compile pipeline
@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parents[6]
-SCRIPT = REPO / "api" / "api.mock.jbang.kt"
+SCRIPT = REPO / "api" / "src" / "jbangMain" / "ApiMock.jbang.kt"
 
 
 def _jbang():

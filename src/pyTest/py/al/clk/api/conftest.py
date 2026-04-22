@@ -3,7 +3,7 @@
 The session-scoped `wiremock_base` fixture:
  1. Ensures SDKMAN + jbang are installed (see tests/bootstrap.py).
  2. Resolves the LM Studio OpenAPI spec: online first, local fallback.
- 3. Launches api/api.mock.jbang.kt (openapi start) and waits for readiness.
+ 3. Launches api/src/jbangMain/ApiMock.jbang.kt (openapi start) and waits for readiness.
  4. Yields the base URL; tears the facade down at session end.
 
 Override knobs:
@@ -51,7 +51,7 @@ except ImportError:  # pragma: no cover — fallback parser
             )
 
 API_ROOT = REPO / os.environ.get("API_ROOT", "api")
-SCRIPT = API_ROOT / "api.mock.jbang.kt"
+SCRIPT = API_ROOT / "src" / "jbangMain" / "ApiMock.jbang.kt"
 LOCAL_SPEC = REPO / os.environ.get("OPENAPI_SPEC_LOCAL",
                                    "api/openapi/spec/lm-studio.yaml")
 

@@ -89,23 +89,30 @@
 // subcommand reads the same config the Python side sees via dotenv.
 //DEPS io.github.cdimascio:dotenv-kotlin:6.4.1
 
-// KMP layout — commonMain holds KMP-portable sources; jbangMain holds
-// JVM-specific code (JDBC, Jackson, ical4j, WireMock, Ktor, …).
-//SOURCES src/commonMain/kotlin/al/clk/api/Naming.kt
-//SOURCES src/commonMain/kotlin/al/clk/api/ComponentTables.kt
-//SOURCES src/commonMain/kotlin/al/clk/api/SqlTypes.kt
-//SOURCES src/commonMain/kotlin/al/clk/api/FormatType.kt
-//SOURCES src/commonMain/kotlin/al/clk/api/FakeProvider.kt
-//SOURCES src/commonMain/kotlin/al/clk/api/APIMock.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/JClassKClass.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/JdbcExposed.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/IcsVcfParser.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/DatafakerProvider.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/openapi/Wiremock.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/asyncapi/AsyncApiServer.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/mcp/McpServer.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/rsocket/RSocketServer.kt
-//SOURCES src/jbangMain/kotlin/al/clk/api/jdbc/JdbcServer.kt
+// Hybrid build: jbang is the driver here (the way Gradle drives a
+// standard KMP module). `commonMain` holds KMP-portable sources;
+// `jvmMain` holds JVM-only code (JDBC, Jackson, ical4j, WireMock,
+// Ktor, Spring, datafaker). Tests mirror the split — `commonTest`
+// for KMP parity tests, `jvmTest` for JVM specifics. A future
+// `build.gradle.kts` pointed at the same source sets turns this
+// into a standard KMP publication without a line of code moving.
+// //SOURCES paths resolve relative to this launcher's directory
+// (`api/src/jbangMain/`).
+//SOURCES ../commonMain/kotlin/al/clk/api/Naming.kt
+//SOURCES ../commonMain/kotlin/al/clk/api/ComponentTables.kt
+//SOURCES ../commonMain/kotlin/al/clk/api/SqlTypes.kt
+//SOURCES ../commonMain/kotlin/al/clk/api/FormatType.kt
+//SOURCES ../commonMain/kotlin/al/clk/api/FakeProvider.kt
+//SOURCES ../commonMain/kotlin/al/clk/api/APIMock.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/JClassKClass.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/JdbcExposed.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/IcsVcfParser.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/DatafakerProvider.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/openapi/Wiremock.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/asyncapi/AsyncApiServer.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/mcp/McpServer.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/rsocket/RSocketServer.kt
+//SOURCES ../jvmMain/kotlin/al/clk/api/jdbc/JdbcServer.kt
 
 // Thin jbang shell around `src/commonMain/kotlin/al/clk/api/APIMock.kt`.
 // All Clikt wiring, the root command, and the subcommand tree live

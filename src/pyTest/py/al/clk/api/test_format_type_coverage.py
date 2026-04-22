@@ -75,7 +75,7 @@ def test_proto_source_is_present():
 
 
 def test_wire_and_moshi_deps_sourced_into_api_mock():
-    kt = (REPO / "api" / "api.mock.jbang.kt").read_text()
+    kt = (REPO / "api" / "src" / "jbangMain" / "ApiMock.jbang.kt").read_text()
     for needle in (
         "com.squareup.wire:wire-runtime-jvm",
         "com.squareup.moshi:moshi",

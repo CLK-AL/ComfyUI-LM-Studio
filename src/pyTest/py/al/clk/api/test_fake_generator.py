@@ -103,13 +103,13 @@ def test_color_shape():
 def test_kotlin_side_declares_faker_stack():
     """Kotlin side registers the abstract FakeProvider + datafaker
     implementation. `--faker <name>` picks a provider at runtime."""
-    kt = (REPO / "api" / "api.mock.jbang.kt").read_text()
+    kt = (REPO / "api" / "src" / "jbangMain" / "ApiMock.jbang.kt").read_text()
     assert "net.datafaker:datafaker" in kt
     fp = (REPO / "api" / "src" / "commonMain" / "kotlin" / "al" / "clk" / "api" / "FakeProvider.kt").read_text()
     assert "interface FakeProvider" in fp
     assert "nextId" in fp
     assert "FakeProviderFactory" in fp
-    df = (REPO / "api" / "src" / "jbangMain" / "kotlin" / "al" / "clk" / "api" / "DatafakerProvider.kt").read_text()
+    df = (REPO / "api" / "src" / "jvmMain" / "kotlin" / "al" / "clk" / "api" / "DatafakerProvider.kt").read_text()
     assert "class DatafakerProvider" in df
     assert "net.datafaker.Faker" in df
     assert "AtomicLong" in fp

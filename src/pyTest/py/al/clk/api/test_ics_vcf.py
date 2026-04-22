@@ -179,8 +179,8 @@ def test_backend_report():
 
 
 def test_kotlin_side_declares_ical4j_and_ezvcard():
-    kt = (REPO / "api" / "api.mock.jbang.kt").read_text()
+    kt = (REPO / "api" / "src" / "jbangMain" / "ApiMock.jbang.kt").read_text()
     assert "org.mnode.ical4j:ical4j" in kt
     assert "com.googlecode.ez-vcard:ez-vcard" in kt
-    src = (REPO / "api" / "src" / "jbangMain" / "kotlin" / "al" / "clk" / "api" / "IcsVcfParser.kt").read_text()
+    src = (REPO / "api" / "src" / "jvmMain" / "kotlin" / "al" / "clk" / "api" / "IcsVcfParser.kt").read_text()
     assert "icsToJcal" in src and "vcfToJcard" in src

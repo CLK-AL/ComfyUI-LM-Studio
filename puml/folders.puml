@@ -29,8 +29,6 @@ rectangle "**Repo root**" as ROOT {
 
 ' ============================================================= api/ tree
 rectangle "api/" as API {
-  card "**api.mock.jbang.kt**\n//KOTLIN + //JAVA pins\n//DEPS + //SOURCES\n→ apiMockMain(args)" as JBANG #D1F0D1
-
   rectangle "openapi/spec/" as OPENAPI_SPEC {
     card "lm-studio.yaml\nsecured-demo.yaml" as OPEN_SPECS
   }
@@ -60,7 +58,15 @@ rectangle "api/" as API {
       card "codecs.kt\nJSON / CBOR / Protobuf / XML / MsgPack" as CODECS
     }
 
-    rectangle "jbangMain/kotlin/al/clk/api/\n**JVM-only Kotlin**" as JBANG_MAIN #FFE6E6 {
+    rectangle "jbangMain/\n**jbang launcher**" as JBANG_DIR #D1F0D1 {
+      card "ApiMock.jbang.kt\n//KOTLIN + //JAVA pins\n//DEPS + //SOURCES\n→ apiMockMain(args)" as JBANG
+    }
+
+    rectangle "commonTest/kotlin/al/clk/api/\n**KMP parity tests**" as COMMON_TEST #E8F5E9 {
+      card "FormatTypeCommonTest.kt\nNamingCommonTest.kt" as C_TESTS
+    }
+
+    rectangle "jvmMain/kotlin/al/clk/api/\n**JVM-only Kotlin**" as JBANG_MAIN #FFE6E6 {
       card "JClassKClass.kt\nKClassEnum (kotlin.reflect) +\nJClassEnum (java.*, Jackson) +\nPyClassEnum (string FQN) +\nKmpToJvm bridge" as JCLASS
       card "JdbcExposed.kt\nSpring JdbcTemplate + SQLDelight" as JDE
       card "IcsVcfParser.kt\nical4j + ez-vcard → jCal/jCard" as ICV
@@ -111,7 +117,7 @@ rectangle "src/pyMain/py/\n**Python mirror**" as PYMAIN #E6F7E6 {
 }
 
 ' ============================================================ src/pyTest
-rectangle "src/pyTest/py/al/clk/api/\n**pytest suite (252 cases)**" as PYTEST #E6F0FF {
+rectangle "src/pyTest/py/al/clk/api/\n**pytest suite (259 cases)**" as PYTEST #E6F0FF {
   card "conftest.py\n(python-dotenv load of api.env,\n WireMock facade spawn)" as PY_CONF
   card "bootstrap.py (SDKMAN + jbang + spec fetch)" as PY_BOOT
 

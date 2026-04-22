@@ -185,29 +185,47 @@ control to `al.clk.api.apiMockMain` in `commonMain/`.
 │   ├── __init__.py                   →  from al.clk.api import NODE_CLASS_MAPPINGS
 │   └── node.py                       →  from al.clk.api.node import OpenAPINode
 ├── api/
-│   ├── api.mock.jbang.kt             ← //DEPS + //SOURCES shell; calls apiMockMain(args)
 │   ├── openapi/spec/…                ← YAML/JSON specs (LM Studio etc.)
 │   ├── asyncapi/spec/…
 │   ├── jdbc/spec/…
 │   └── src/
-│       ├── proto/al/clk/api/types.proto        (package al.clk.api)
-│       ├── commonMain/kotlin/al/clk/api/       KMP-portable Kotlin
-│       │   ├── APIMock.kt            Clikt root + `apiMockMain`
-│       │   ├── FormatType.kt         one-hop mapper (KClass↔JClass↔PyClass)
+│       ├── proto/al/clk/api/types.proto         (package al.clk.api)
+│       ├── commonMain/kotlin/al/clk/api/        KMP-portable Kotlin
+│       │   ├── APIMock.kt             Clikt root + `apiMockMain`
+│       │   ├── FormatType.kt          one-hop mapper (KClass↔JClass↔PyClass)
 │       │   ├── SqlTypes.kt, Naming.kt, ComponentTables.kt, FakeProvider.kt
-│       └── jbangMain/kotlin/al/clk/api/        JVM-only
-│           ├── JClassKClass.kt       java.*, Jackson refs live here
-│           ├── JdbcExposed.kt, IcsVcfParser.kt, DatafakerProvider.kt
-│           └── {openapi,asyncapi,mcp,rsocket,jdbc}/…Server.kt
+│       ├── commonTest/kotlin/al/clk/api/        KMP parity tests
+│       │   ├── FormatTypeCommonTest.kt, NamingCommonTest.kt
+│       ├── jvmMain/kotlin/al/clk/api/           JVM-only (java.*, Jackson, Spring, Ktor, ical4j)
+│       │   ├── JClassKClass.kt        java.*, Jackson refs live here
+│       │   ├── JdbcExposed.kt, IcsVcfParser.kt, DatafakerProvider.kt
+│       │   └── {openapi,asyncapi,mcp,rsocket,jdbc}/…Server.kt
+│       ├── jvmTest/kotlin/al/clk/api/           JVM tests
+│       │   ├── JClassKClassTest.kt, IcsVcfParserTest.kt
+│       └── jbangMain/
+│           └── ApiMock.jbang.kt       jbang launcher — //DEPS + //SOURCES + `main → apiMockMain`
 └── src/
     ├── pyMain/py/al/clk/api/         Python mirror (package al.clk.api)
     │   ├── format_type.py, naming.py, registry.py, node.py
     │   ├── entity_store.py, schema_registry.py, schema_patch.py
     │   └── {presets,protocols,to_jsonschema}/…
-    └── pyTest/py/al/clk/api/         pytest suite
+    └── pyTest/py/al/clk/api/         pytest suite (259 cases)
         ├── conftest.py, bootstrap.py, fixtures/
-        └── test_*.py
+        └── test_*.py                 (includes test_vcard_ical_api.py)
 ```
+
+Design goal: **push as much logic as possible into `commonMain`** so a
+future KMP publication (Android / iOS / JS) gets the same bridge. JVM
+stays for things that genuinely need a JVM library — Jackson JSON
+tree, Spring JDBC, WireMock, Ktor server, ical4j / ez-vcard,
+datafaker, and the Apache Commons / libphonenumber / libpostal /
+GeoIP integrations that `jvmMain` is the natural home for.
+
+`jbangMain` is only the jbang launcher — the single
+`ApiMock.jbang.kt` file that declares `//DEPS` + `//SOURCES` and
+hands control to `apiMockMain(args)` in `commonMain/APIMock.kt`. A
+Gradle `build.gradle.kts` pointed at the same source sets turns the
+tree into a standard KMP publication without a line of code moving.
 
 `api.env` is the shared configuration file — `python-dotenv` in
 `conftest.py` and `dotenv-kotlin` in `APIMock.kt` both read the same
@@ -309,7 +327,8 @@ reuse the cache (~20 s).
 
 ```bash
 source ~/.sdkman/bin/sdkman-init.sh && sdk env
-jbang api/api.mock.jbang.kt openapi start start --spec api/openapi/spec/lm-studio.yaml
+jbang api/src/jbangMain/ApiMock.jbang.kt openapi start \
+      --spec api/openapi/spec/lm-studio.yaml
 ```
 
 ## Contributing

@@ -62,7 +62,7 @@ def test_sql_dispatch_matches_fixture():
 
 
 def test_kotlin_mirror_is_sourced():
-    kt = (REPO / "api" / "api.mock.jbang.kt").read_text()
+    kt = (REPO / "api" / "src" / "jbangMain" / "ApiMock.jbang.kt").read_text()
     assert "commonMain/kotlin/al/clk/api/FormatType.kt" in kt
     assert "commonMain/kotlin/al/clk/api/SqlTypes.kt" in kt
     kmp_common = REPO / "api" / "src" / "commonMain" / "kotlin" / "al" / "clk" / "api"
